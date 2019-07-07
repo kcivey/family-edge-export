@@ -1,0 +1,23 @@
+{
+  "name": "family-edge-export",
+  "version": "0.0.1",
+  "description": "Automating export of data from ancient Family Edge genealogy software",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kcivey/family-edge-export.git"
+  },
+  "author": "Keith C. Ivey <keith@iveys.org>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kcivey/family-edge-export/issues"
+  },
+  "homepage": "https://github.com/kcivey/family-edge-export#readme",
+  "dependencies": {
+    "eslint": "^6.0.1",
+    "eslint-config-google": "^0.13.0"
+  }
+}
