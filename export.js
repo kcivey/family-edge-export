@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 const os = require('os');
-const childProcess = require('child_process');
-const {spawn} = childProcess;
+const {spawn} = require('child_process');
 const sendKeys = require('./lib/send-keys');
 const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
@@ -14,10 +13,12 @@ fe.on('close', code => console.log(`child process exited with code ${code}`));
 
 Promise.resolve()
     .then(pause(1000)) // wait for DosBox to start
-    .then(() => sendKeys.getWindowByPid(fe.pid))
-    .then(windowId => sendKeys.send('F-EDGE.EXE\r', windowId))
-    .then(pause(3000))
+    .then(() => sendKeys.setWindowByPid(fe.pid))
+    .then(() => sendKeys.send('F-EDGE.EXE\r'))
+    .then(pause(2000))
     .then(printPages)
+    .then(pause(500))
+    .then(() => sendKeys.send('exit\r'))
     .catch(console.error);
 
 function printPages() {
