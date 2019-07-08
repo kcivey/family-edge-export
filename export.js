@@ -2,8 +2,11 @@
 
 const os = require('os');
 const fs = require('fs');
+const util = require('util');
 const {spawn} = require('child_process');
 const moment = require('moment');
+const numberList = require('number-list');
+const eachLine = util.promisify(require('line-reader').eachLine);
 const argv = require('yargs')
     .options({
         limit: {
@@ -40,6 +43,11 @@ fe.stderr.setEncoding('utf-8').on('data', console.error);
 fe.on('close', function (code) {
     console.log(`DosBox process exited with code ${code}`);
     console.log(`Output written to ${outFile}`);
+    getIdsExported()
+        .then(function (ids) {
+            const idList = numberList.stringify(ids);
+            console.log(`Exported IDs ${idList}`);
+        });
 });
 
 Promise.resolve()
@@ -58,6 +66,7 @@ function printPages() {
     sendKeys.send(' u{shift+F7}');
     for (let i = 1; i <= argv.limit; i++) {
         if (i % chunkSize === 0) {
+            console.log(i);
             const size = fs.statSync(outFile).size;
             if (prevSize !== null && prevSize === size) {
                 break;
@@ -67,6 +76,17 @@ function printPages() {
         sendKeys.send('p' + i + '\r');
     }
     sendKeys.send('qqqn');
+}
+
+function getIdsExported() {
+    const ids = [];
+    return eachLine(outFile, function (line, last) {
+        const m = line.match(/^\s*FULL NAME:.+\(#(\d+)\)$/m);
+        if (m) {
+            ids.push(+m[1]);
+        }
+        return !last;
+    }).then(() => ids);
 }
 
 function pause(delay) {
