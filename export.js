@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-const os = require('os');
 const fs = require('fs');
 const util = require('util');
 const {spawn} = require('child_process');
-const moment = require('moment');
 const numberList = require('number-list');
 const eachLine = util.promisify(require('line-reader').eachLine);
 const argv = require('yargs')
@@ -22,9 +20,7 @@ const argv = require('yargs')
     .strict(true)
     .argv;
 const sendKeys = require('./lib/send-keys');
-const dosBoxBin = '/usr/bin/dosbox';
-const edgeDir = os.homedir() + '/dos/F-EDGE';
-const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
+const {dosBoxBin, edgeDir, outFile} = require('./lib/config');
 
 if (argv.delete) {
     try {
