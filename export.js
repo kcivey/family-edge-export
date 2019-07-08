@@ -60,8 +60,9 @@ Promise.resolve()
     .then(() => sendKeys.send('exit\r'))
     .catch(console.error);
 
-function printPages() {
+async function printPages() {
     const chunkSize = 100;
+    const delay = pause(20); // pause 20 ms between records
     let prevSize = null;
     sendKeys.send(' u{shift+F7}');
     for (let i = 1; i <= argv.limit; i++) {
@@ -74,6 +75,7 @@ function printPages() {
             prevSize = size;
         }
         sendKeys.send('p' + i + '\r');
+        await delay();
     }
     sendKeys.send('qqqn');
 }
