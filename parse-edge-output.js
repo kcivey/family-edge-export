@@ -45,7 +45,6 @@ eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
     if (pos !== page.length) {
         throw new Error(`Unexpected format at end of page "${page.substr(pos)}"`);
     }
-    //console.log(record);
     printPersonRecord(record);
     count++;
     return !last;
@@ -100,8 +99,9 @@ function printHeaderRecord() {
 
 function printPersonRecord(properties) {
     const data = {tree: []};
+    const parents = [];
+    const sources = properties.SOURCES || {};
     let personId;
-    let parents = [];
     for (const [key, value] of Object.entries(properties)) {
         switch (key) {
             case 'FULL NAME': {
@@ -111,6 +111,9 @@ function printPersonRecord(properties) {
                 data.tree.push({tag: 'NAME', data: name});
                 if (sexById[id]) {
                     data.tree.push({tag: 'SEX', data: sexById[id]});
+                }
+                if (sources['Name']) {
+                    data.tree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources['Name']}]});
                 }
                 personId = id;
                 break;
@@ -130,10 +133,20 @@ function printPersonRecord(properties) {
                 const {date, place} = parseDatePlace(value);
                 const tree = [];
                 if (date) {
-                    tree.push({tag: 'DATE', data: date});
+                    const type = {BORN: 'Birth', DIED: 'Death'}[key];
+                    const dateTree = [];
+                    if (type && sources[type]) {
+                        dateTree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources[type]}]});
+                    }
+                    tree.push({tag: 'DATE', data: date, tree: dateTree});
                 }
                 if (place) {
-                    tree.push({tag: 'PLAC', data: place});
+                    const type = {BORN: 'BPlace', DIED: 'DPlace'}[key];
+                    const placeTree = [];
+                    if (type && sources[type]) {
+                        placeTree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources[type]}]});
+                    }
+                    tree.push({tag: 'PLAC', data: place, tree: placeTree});
                 }
                 data.tree.push({tag, tree});
                 break;
@@ -166,6 +179,7 @@ function printPersonRecord(properties) {
                 }
                 break;
             }
+            case 'SOURCES':
             case 'FULL SIBL\'G':
             case 'CHILDREN':
                 // skip
@@ -176,6 +190,17 @@ function printPersonRecord(properties) {
     }
     if (parents.length) {
         data.tree.push({tag: 'FAMC', data: familyPointer(parents[0], parents[1])});
+    }
+    for (const type of ['Father', 'Mother', 'Other']) {
+        if (sources[type]) {
+            data.tree.push({
+                tag: 'SOUR',
+                tree: [
+                    {tag: 'TITL', data: sources[type]},
+                    {tag: 'NOTE', data: type},
+                ],
+            });
+        }
     }
     printRecord(data);
 }
