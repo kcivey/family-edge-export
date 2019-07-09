@@ -294,6 +294,12 @@ function fixData(data) {
             allowedLength -= newRecord.pointer.length - 1;
         }
         newRecord.data = newRecord.data.replace(/\s+/g, ' ');
+        let note = '';
+        const m = newRecord.tag !== 'NOTE' && newRecord.data.match(/;? \[NOTE: ([^\]]+)]$/);
+        if (m) {
+            note = m[1];
+            newRecord.data = newRecord.data.substr(0, newRecord.data.length - m[0].length);
+        }
         if (newRecord.data.length > allowedLength) {
             const re = new RegExp(`.{0,${allowedLength}}\\S`, 'g');
             const parts = newRecord.data.match(re);
@@ -301,6 +307,9 @@ function fixData(data) {
             for (const part of parts) {
                 newRecord.tree.push({tag: 'CONC', data: part});
             }
+        }
+        if (note) {
+            newRecord.tree.push({tag: 'NOTE', data: note});
         }
         newRecord.tree = fixData(newRecord.tree);
         newData.push(newRecord);
