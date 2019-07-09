@@ -100,7 +100,10 @@ function printHeaderRecord() {
 function printPersonRecord(properties) {
     const data = {tree: []};
     const parents = [];
-    const sources = properties.SOURCES || {};
+    const sources = properties['SOURCES'] || {};
+    if (properties['TOMBSTONE'] && !properties['BURIED']) {
+        properties['BURIED'] = '';
+    }
     let personId;
     for (const [key, value] of Object.entries(properties)) {
         switch (key) {
@@ -148,6 +151,9 @@ function printPersonRecord(properties) {
                     }
                     tree.push({tag: 'PLAC', data: place, tree: placeTree});
                 }
+                if (key === 'BURIED' && properties['TOMBSTONE']) {
+                    tree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
+                }
                 data.tree.push({tag, tree});
                 break;
             }
@@ -180,6 +186,7 @@ function printPersonRecord(properties) {
                 break;
             }
             case 'SOURCES':
+            case 'TOMBSTONE':
             case 'FULL SIBL\'G':
             case 'CHILDREN':
                 // skip
