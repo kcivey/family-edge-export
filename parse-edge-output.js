@@ -147,6 +147,7 @@ function printPersonRecord(properties) {
                 );
                 break;
             case 'NOTE':
+            case 'HISTORY NOTES':
                 data.tree.push({tag: 'NOTE', data: value});
                 break;
             case 'FATHER':
@@ -253,6 +254,7 @@ function fixData(data) {
             {pointer: '', data: '', tree: []},
             record,
         );
+        newRecord.data = newRecord.data.replace(/\s+/g, ' ');
         if (newRecord.data.length > 64) {
             const parts = newRecord.data.match(/.{0,63}\S/g);
             newRecord.data = parts.shift();
