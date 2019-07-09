@@ -5,6 +5,7 @@ const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
 const inFile = require('./lib/config').outFile;
+const sexById = {}; // sex of persons by ID
 
 printHeaderRecord();
 
@@ -106,6 +107,10 @@ function printPersonRecord(properties) {
                 data.pointer = personPointer(id);
                 data.tag = 'INDI';
                 data.tree.push({tag: 'NAME', data: name});
+                if (sexById[id]) {
+                    console.warn('pushing', sexById[id]);
+                    data.tree.push({tag: 'SEX', data: sexById[id]});
+                }
                 break;
             }
             case 'BORN':
@@ -143,7 +148,14 @@ function printPersonRecord(properties) {
                 data.tree.push({tag: 'NOTE', data: value});
                 break;
             case 'FATHER':
-            case 'MOTHER':
+            case 'MOTHER': {
+                const {id} = parseName(value);
+                if (id) {
+                    sexById[id] = key === 'FATHER' ? 'M' : 'F';
+                    console.warn('set', id, sexById[id]);
+                }
+                break;
+            }
             case 'FULL SIBL\'G':
             case 'CHILDREN':
                 // skip
@@ -156,6 +168,9 @@ function printPersonRecord(properties) {
 }
 
 function parseName(s) {
+    if (!s) {
+        return {};
+    }
     const m = s.match(/^(.+) \(#(\d+)\)$/);
     if (!m) {
         throw new Error(`Unexpected person format "${s}"`);
