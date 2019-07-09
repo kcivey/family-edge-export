@@ -280,15 +280,21 @@ function fixData(data) {
     if (!Array.isArray(data)) {
         data = [data];
     }
+    const maxLineLength = 80;
     const newData = [];
     for (const record of data) {
         const newRecord = Object.assign(
             {pointer: '', data: '', tree: []},
             record,
         );
+        let allowedLength = maxLineLength - newRecord.tag.length - 3;
+        if (newRecord.pointer) {
+            allowedLength -= newRecord.pointer.length - 1;
+        }
         newRecord.data = newRecord.data.replace(/\s+/g, ' ');
-        if (newRecord.data.length > 64) {
-            const parts = newRecord.data.match(/.{0,63}\S/g);
+        if (newRecord.data.length > allowedLength) {
+            const re = new RegExp(`.{0,${allowedLength}}\\S`, 'g');
+            const parts = newRecord.data.match(re);
             newRecord.data = parts.shift();
             for (const part of parts) {
                 newRecord.tree.push({tag: 'CONC', data: part});
