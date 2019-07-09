@@ -271,7 +271,9 @@ function extractIds(s) {
     const pattern = /\(#(\d+)\)/g;
     let m;
     while ((m = pattern.exec(s))) {
-        ids.push(m[1]);
+        if (!ids.includes(m[1])) {
+            ids.push(m[1]);
+        }
     }
     return ids;
 }
