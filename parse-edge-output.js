@@ -301,7 +301,7 @@ function fixData(data) {
             newRecord.data = newRecord.data.substr(0, newRecord.data.length - m[0].length);
         }
         if (newRecord.data.length > allowedLength) {
-            const re = new RegExp(`.{0,${allowedLength}}\\S`, 'g');
+            const re = new RegExp(`.{0,${allowedLength - 1}}\\S`, 'g');
             const parts = newRecord.data.match(re);
             newRecord.data = parts.shift();
             for (const part of parts) {
