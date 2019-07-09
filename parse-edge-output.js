@@ -220,12 +220,16 @@ function printRecord(data) {
 
 function parseDatePlace(s) {
     const m = s.replace(/\s+/g, ' ')
-        .match(/^(?:living )?((?:(?:\d\d? )?\w{3} )?\d{4}(?:\/\d\d?)?)? ?(.*?)\.?$/);
+        .match(/^(?:living )?(?:(?:(circa|roughly) )?((?:(?:\d\d? )?\w{3} )?\d{4}(?:\/\d\d?)?))? ?(.*?)\.?$/);
     if (!m) {
         throw new Error(`Unexpected date-place format "${s}"`);
     }
-    const date = m[1] && m[1].toUpperCase();
-    const place = m[2] && m[2].replace(/,? ([A-Z]{2})$/, ', $1');
+    const prefix = m[1] && (m[1] === 'roughly' ? 'EST' : 'ABT');
+    let date = m[2] && m[2].toUpperCase();
+    const place = m[3] && m[3].replace(/,? ([A-Z]{2})$/, ', $1');
+    if (date && prefix) {
+        date = prefix + ' ' + date;
+    }
     return {date, place};
 }
 
