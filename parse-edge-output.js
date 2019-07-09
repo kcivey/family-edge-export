@@ -100,6 +100,8 @@ function printHeaderRecord() {
 
 function printPersonRecord(properties) {
     const data = {tree: []};
+    let personId;
+    let parents = [];
     for (const [key, value] of Object.entries(properties)) {
         switch (key) {
             case 'FULL NAME': {
@@ -108,9 +110,9 @@ function printPersonRecord(properties) {
                 data.tag = 'INDI';
                 data.tree.push({tag: 'NAME', data: name});
                 if (sexById[id]) {
-                    console.warn('pushing', sexById[id]);
                     data.tree.push({tag: 'SEX', data: sexById[id]});
                 }
+                personId = id;
                 break;
             }
             case 'BORN':
@@ -152,7 +154,14 @@ function printPersonRecord(properties) {
                 const {id} = parseName(value);
                 if (id) {
                     sexById[id] = key === 'FATHER' ? 'M' : 'F';
-                    console.warn('set', id, sexById[id]);
+                    parents.push(id);
+                }
+                break;
+            }
+            case 'SPOUSES': {
+                const ids = extractIds(value);
+                for (const id of ids) {
+                    data.tree.push({tag: 'FAMS', data: familyPointer(personId, id)});
                 }
                 break;
             }
@@ -163,6 +172,9 @@ function printPersonRecord(properties) {
             default:
                 console.warn(`Skipping ${key}`);
         }
+    }
+    if (parents.length) {
+        data.tree.push({tag: 'FAMC', data: familyPointer(parents[0], parents[1])});
     }
     printRecord(data);
 }
@@ -194,6 +206,14 @@ function personPointer(id) {
     return `@P${id}@`;
 }
 
+function familyPointer(id1, id2) {
+    const ids = [id1 || Infinity, id2 || Infinity]
+        .sort((a, b) => a - b)
+        .map(n => n === Infinity ? 'X' : n)
+        .join('-');
+    return `@F${ids}@`;
+}
+
 function printRecord(data) {
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
 }
@@ -209,6 +229,16 @@ function parseDatePlace(s) {
     return {date, place};
 }
 
+function extractIds(s) {
+    const ids = [];
+    const pattern = /\(#(\d+)\)/g;
+    let m;
+    while ((m = pattern.exec(s))) {
+        ids.push(m[1]);
+    }
+    return ids;
+}
+
 function fixData(data) {
     if (!Array.isArray(data)) {
         data = [data];
@@ -219,13 +249,14 @@ function fixData(data) {
             {pointer: '', data: '', tree: []},
             record,
         );
-        if (record.tree) {
-            newRecord.tree = fixData(record.tree);
-        }
         if (newRecord.data.length > 64) {
             const parts = newRecord.data.match(/.{0,63}\S/g);
-            console.warn(parts);
+            newRecord.data = parts.shift();
+            for (const part of parts) {
+                newRecord.tree.push({tag: 'CONC', data: part});
+            }
         }
+        newRecord.tree = fixData(newRecord.tree);
         newData.push(newRecord);
     }
     return newData;
