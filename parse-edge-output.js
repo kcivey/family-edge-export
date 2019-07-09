@@ -132,7 +132,7 @@ function printPersonRecord(properties) {
                 if (date) {
                     tree.push({tag: 'DATE', data: date});
                 }
-                if (date) {
+                if (place) {
                     tree.push({tag: 'PLAC', data: place});
                 }
                 data.tree.push({tag, tree});
