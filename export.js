@@ -25,41 +25,38 @@ const {dosBoxBin, edgeDir, outFile} = require('./lib/config');
 generatePersonFile()
     .catch(console.error);
 
-function generatePersonFile() {
-    let dosBoxExitPromise;
-    return checkOutFile()
-        .then(startDosBox)
-        .then(function (result) {
-            dosBoxExitPromise = result.promise;
-            sendKeys.setWindowByPid(result.pid);
-        })
-        .then(() => sendKeys.send('F-EDGE.EXE\r')) // start Family Edge
-        .then(pause(2000))
-        .then(printPages)
-        .then(() => sendKeys.send('qqqn')) // quit Family Edge
-        .then(pause(500))
-        .then(quitDosBox)
-        .then(() => dosBoxExitPromise)
-        .then(finish);
+async function generatePersonFile() {
+    await checkOutFile();
+    const {pid, exitPromise} = await startDosBox();
+    sendKeys.setWindowByPid(pid);
+    sendKeys.send('F-EDGE.EXE\r'); // start Family Edge
+    await pause(2000)();
+    await printPages();
+    sendKeys.send('qqqn'); // quit Family Edge
+    await pause(500)();
+    await quitDosBox();
+    const code = await exitPromise;
+    await finish(code);
 }
 
-function checkOutFile() {
-    let promise = Promise.resolve();
+async function checkOutFile() {
     if (argv.delete) {
-        promise = promise.then(() => fs.unlink(outFile))
-            .catch(function (err) {
-                if (err.code !== 'ENOENT') {
-                    throw err;
-                }
-            });
+        try {
+            await fs.unlink(outFile);
+        }
+        catch (err) {
+            if (err.code !== 'ENOENT') {
+                throw err;
+            }
+        }
     }
-    return promise.then(() => fs.access(outFile))
-        .then(
-            function () {
-                throw new Error(`${outFile} already exists`);
-            },
-            () => {}
-        );
+    try {
+        await fs.access(outFile);
+    }
+    catch (err) {
+        return true;
+    }
+    throw new Error(`${outFile} already exists`);
 }
 
 function startDosBox() {
@@ -69,7 +66,7 @@ function startDosBox() {
     const exitPromise = new Promise(function (resolve) {
         fe.on('close', resolve);
     });
-    return pause(1000)({pid: fe.pid, promise: exitPromise}); // wait for DosBox to start
+    return pause(1000)({pid: fe.pid, exitPromise}); // wait for DosBox to start
 }
 
 async function printPages() {
@@ -96,32 +93,31 @@ function quitDosBox() {
     return pause(200)();
 }
 
-function finish(code) {
+async function finish(code) {
     if (code) {
         throw new Error(`DosBox process exited with code ${code}`);
     }
     const newFile = __dirname + '/persons.doc';
-    fs.rename(outFile, newFile)
-        .then(() => console.log(`Output written to ${newFile}`))
-        .then(() => getIdsExported(newFile))
-        .then(function (ids) {
-            const idList = numberList.stringify(ids);
-            console.log(`${ids.length} persons exported: ${idList}`);
-            if (!/^1-\d+$/.test(idList)) {
-                throw new Error('Some persons were skipped');
-            }
-        });
+    await fs.rename(outFile, newFile);
+    console.log(`Output written to ${newFile}`);
+    const ids = await getIdsExported(newFile);
+    const idList = numberList.stringify(ids);
+    console.log(`${ids.length} persons exported: ${idList}`);
+    if (!/^1-\d+$/.test(idList)) {
+        throw new Error('Some persons were skipped');
+    }
 }
 
-function getIdsExported(file) {
+async function getIdsExported(file) {
     const ids = [];
-    return eachLine(file, function (line, last) {
+    await eachLine(file, function (line, last) {
         const m = line.match(/^\s*FULL NAME:.+\(#(\d+)\)$/m);
         if (m) {
             ids.push(+m[1]);
         }
         return !last;
-    }).then(() => ids);
+    });
+    return ids;
 }
 
 function pause(delay) {
