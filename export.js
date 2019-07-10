@@ -26,15 +26,21 @@ generatePersonFile()
     .catch(console.error);
 
 function generatePersonFile() {
+    let dosBoxExitPromise;
     return checkOutFile()
         .then(startDosBox)
-        .then(pid => sendKeys.setWindowByPid(pid))
+        .then(function (result) {
+            dosBoxExitPromise = result.promise;
+            sendKeys.setWindowByPid(result.pid);
+        })
         .then(() => sendKeys.send('F-EDGE.EXE\r')) // start Family Edge
         .then(pause(2000))
         .then(printPages)
         .then(() => sendKeys.send('qqqn')) // quit Family Edge
         .then(pause(500))
-        .then(quitDosBox);
+        .then(quitDosBox)
+        .then(() => dosBoxExitPromise)
+        .then(finish);
 }
 
 function checkOutFile() {
@@ -60,8 +66,10 @@ function startDosBox() {
     const fe = spawn(dosBoxBin, [edgeDir], {cwd: '.'});
     fe.stdout.setEncoding('utf-8').on('data', console.log);
     fe.stderr.setEncoding('utf-8').on('data', console.error);
-    fe.on('close', finish);
-    return pause(1000)(fe.pid); // wait for DosBox to start
+    const exitPromise = new Promise(function (resolve) {
+        fe.on('close', resolve);
+    });
+    return pause(1000)({pid: fe.pid, promise: exitPromise}); // wait for DosBox to start
 }
 
 async function printPages() {
