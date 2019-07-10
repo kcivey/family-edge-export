@@ -114,59 +114,67 @@ async function finish(type) {
     await fs.rename(outFile, newFile);
     console.log(`Output written to ${newFile}`);
     if (type === 'person') {
-        let {personIds, familyIds} = await getIdsExported(newFile);
+        const {personIds, familyIds} = await getIdsExported(newFile);
         const personIdList = numberList.stringify(personIds);
         console.log(`${personIds.length} persons exported: ${personIdList}`);
         if (!/^1-\d+$/.test(personIdList)) {
             throw new Error('Some persons were skipped');
         }
-        familyIds = familyIds.sort();
-        console.warn(familyIds);
         return familyIds;
     }
 }
 
 async function getIdsExported(file) {
-    const regExps = {};
-    for (const key of ['FULL NAME', 'FATHER', 'MOTHER']) {
-        regExps[key] = new RegExp(`^\\s*${key}:.+\\(#(\\d+)\\)$`, 'm');
-    }
     const personIds = [];
-    const familyIds = [];
+    let familyIds = [];
     await eachLine(file, {separator: '\f', buffer: 4096}, function (page, last) {
         page = page.replace(/\r\n/g, '\n');
-        let m = page.match(regExps['FULL NAME']);
-        let personId;
-        if (m) {
-            personId = +m[1];
-            personIds.push(personId);
-        }
-        const parentIds = [];
-        for (const key of ['FATHER', 'MOTHER']) {
-            const m = page.match(regExps[key]);
-            if (m) {
-                parentIds.push(+m[1]);
-            }
-        }
-        if (parentIds.length) {
-            const familyId = makeFamilyId(parentIds);
-            if (!familyIds.includes(familyId)) {
+        const personId = extractPersonId(page);
+        personIds.push(personId);
+        const childFamilyId = getChildFamilyId(page);
+        const newFamilyIds = getSpouseFamilyIds(page, personId).concat([childFamilyId]);
+        for (const familyId of newFamilyIds) {
+            if (familyId && !familyIds.includes(familyId)) {
                 familyIds.push(familyId);
-            }
-        }
-        m = page.match(/^ *SPOUSES: (.*(?:\n {10,}.+)*)$/m);
-        if (m) {
-            const spouseIds = extractIds(m[1]);
-            for (const spouseId of spouseIds) {
-                const familyId = makeFamilyId([personId, spouseId]);
-                if (!familyIds.includes(familyId)) {
-                    familyIds.push(familyId);
-                }
             }
         }
         return !last;
     });
+    familyIds = familyIds.sort();
     return {personIds, familyIds};
+}
+
+function extractPersonId(page) {
+    const m = page.match(/^\s*FULL NAME:.+\(#(\d+)\)$/m);
+    if (!m) {
+        throw new Error(`Person ID not found\n"${page}"`);
+    }
+    return +m[1];
+}
+
+function getChildFamilyId(page) {
+    const patterns = [
+        /^\s*FATHER:.+\(#(\d+)\)$/m,
+        /^\s*MOTHER:.+\(#(\d+)\)$/m,
+    ];
+    const parentIds = [];
+    for (const pattern of patterns) {
+        const m = page.match(pattern);
+        if (m) {
+            parentIds.push(+m[1]);
+        }
+    }
+    return makeFamilyId(parentIds);
+}
+
+function getSpouseFamilyIds(page, personId) {
+    let familyIds = [];
+    const m = page.match(/^ *SPOUSES: (.*(?:\n {10,}.+)*)$/m);
+    if (m) {
+        familyIds = extractIds(m[1])
+            .map(spouseId => makeFamilyId([personId, spouseId]));
+    }
+    return familyIds;
 }
 
 function extractIds(s) {
@@ -182,8 +190,11 @@ function extractIds(s) {
 }
 
 function makeFamilyId(ids) {
+    if (ids.length === 0) {
+        return null;
+    }
     if (ids.length === 1) {
-        ids[1] = 0;
+        ids.push(0);
     }
     else {
         ids = ids.sort((a, b) => a - b);
