@@ -4,7 +4,7 @@ const util = require('util');
 const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
-const inFile = __dirname + '/persons.doc';
+const inFile = __dirname + '/person.doc';
 const sexById = {}; // sex of persons by ID
 
 printHeaderRecord();
@@ -161,7 +161,7 @@ function printPersonRecord(properties) {
                 data.tree.push(
                     {
                         tag: 'OCCU',
-                        tree: [{tag: 'TYPE', data: value}],
+                        data: value,
                     }
                 );
                 break;
