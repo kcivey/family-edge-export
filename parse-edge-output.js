@@ -4,7 +4,7 @@ const util = require('util');
 const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
-const inFile = require('./lib/config').outFile;
+const inFile = __dirname + '/persons.doc';
 const sexById = {}; // sex of persons by ID
 
 printHeaderRecord();
