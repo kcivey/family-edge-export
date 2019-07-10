@@ -8,49 +8,25 @@ const inFile = __dirname + '/person.doc';
 const sexById = {}; // sex of persons by ID
 
 printHeaderRecord();
+printPersonRecords();
 
-let count = 0;
-eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
-    page = page.replace(/\r\n/g, '\n')
-        .replace(/^.+\n=+\n/, '')
-        .replace(/\nFrom: .+$/s, '\n');
-    const record = {};
-    let m = page.match(/\n-- SOURCES -+\n(.+)$/s);
-    if (m) {
-        const sourceText = m[1];
-        page = page.substr(0, page.length - m[0].length);
-        const sources = {};
-        const pattern = /([^.]+)\.{2,}(.+)\n/y;
-        let pos = 0;
-        while ((m = pattern.exec(sourceText))) {
-            sources[m[1]] = m[2].trim();
-            pos = pattern.lastIndex;
-        }
-        if (pos !== sourceText.length) {
-            throw new Error(`Unexpected format in sources "${sourceText.substr(pos)}"`);
-        }
-        record['SOURCES'] = sources;
-    }
-    m = page.match(/\n-- HISTORY NOTES -+\n(.+)$/s);
-    if (m) {
-        record['HISTORY NOTES'] = m[1].trim();
-        page = page.substr(0, page.length - m[0].length);
-    }
-    const pattern = / *([^:]+): (.*(?:\n {10,}.+)*)\n/y;
-    let pos = 0;
-    while ((m = pattern.exec(page))) {
-        record[m[1]] = m[2].trim();
-        pos = pattern.lastIndex;
-    }
-    if (pos !== page.length) {
-        throw new Error(`Unexpected format at end of page "${page.substr(pos)}"`);
-    }
-    printPersonRecord(record);
-    count++;
-    return !last;
-})
-    .then(() => console.log(count))
-    .catch(console.error);
+function printPersonRecords() {
+    let count = 0;
+    eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
+        page = page.replace(/\r\n/g, '\n')
+            .replace(/^.+\n=+\n/, '')
+            .replace(/\nFrom: .+$/s, '\n');
+        const record = {};
+        [record['SOURCES'], page] = getSources(page);
+        [record['HISTORY NOTES'], page] = getHistoryNotes(page);
+        Object.assign(record, getProperties(page));
+        printPersonRecord(record);
+        count++;
+        return !last;
+    })
+        .then(() => console.log(count))
+        .catch(console.error);
+}
 
 function printHeaderRecord() {
     printRecord({
@@ -97,10 +73,54 @@ function printHeaderRecord() {
     });
 }
 
+function getSources(page) {
+    const sources = {};
+    let m = page.match(/\n-- SOURCES -+\n(.+)$/s);
+    if (m) {
+        const text = m[1];
+        page = page.substr(0, page.length - m[0].length);
+        const pattern = /([^.]+)\.{2,}(.+)\n/y;
+        let pos = 0;
+        while ((m = pattern.exec(text))) {
+            sources[m[1]] = m[2].trim();
+            pos = pattern.lastIndex;
+        }
+        if (pos !== text.length) {
+            throw new Error(`Unexpected format in sources "${text.substr(pos)}"`);
+        }
+    }
+    return [sources, page];
+}
+
+function getHistoryNotes(page) {
+    const m = page.match(/\n-- HISTORY NOTES -+\n(.+)$/s);
+    let notes = null;
+    if (m) {
+        notes = m[1].trim();
+        page = page.substr(0, page.length - m[0].length);
+    }
+    return [notes, page];
+}
+
+function getProperties(page) {
+    const record = {};
+    const pattern = / *([^:]+): (.*(?:\n {10,}.+)*)\n/y;
+    let pos = 0;
+    let m;
+    while ((m = pattern.exec(page))) {
+        record[m[1]] = m[2].trim();
+        pos = pattern.lastIndex;
+    }
+    if (pos !== page.length) {
+        throw new Error(`Unexpected format at end of page "${page.substr(pos)}"`);
+    }
+    return record;
+}
+
 function printPersonRecord(properties) {
     const data = {tree: []};
     const parents = [];
-    const sources = properties['SOURCES'] || {};
+    const sources = properties['SOURCES'];
     if (properties['TOMBSTONE'] && !properties['BURIED']) {
         properties['BURIED'] = '';
     }
@@ -167,7 +187,9 @@ function printPersonRecord(properties) {
                 break;
             case 'NOTE':
             case 'HISTORY NOTES':
-                data.tree.push({tag: 'NOTE', data: value});
+                if (value) {
+                    data.tree.push({tag: 'NOTE', data: value});
+                }
                 break;
             case 'FATHER':
             case 'MOTHER': {
