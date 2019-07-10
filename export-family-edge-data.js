@@ -2,7 +2,9 @@
 
 const fs = require('fs').promises;
 const util = require('util');
+const os = require('os');
 const {spawn} = require('child_process');
+const moment = require('moment');
 const numberList = require('number-list');
 const eachLine = util.promisify(require('line-reader').eachLine);
 const argv = require('yargs')
@@ -20,7 +22,9 @@ const argv = require('yargs')
     .strict(true)
     .argv;
 const sendKeys = require('./lib/send-keys');
-const {dosBoxBin, edgeDir, outFile} = require('./lib/config');
+const dosBoxBin = '/usr/bin/dosbox';
+const edgeDir = os.homedir() + '/dos/F-EDGE';
+const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
 
 generateFile('person')
     .then(familyIds => generateFile('family', familyIds))
