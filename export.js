@@ -100,24 +100,79 @@ async function finish(code) {
     const newFile = __dirname + '/persons.doc';
     await fs.rename(outFile, newFile);
     console.log(`Output written to ${newFile}`);
-    const ids = await getIdsExported(newFile);
-    const idList = numberList.stringify(ids);
-    console.log(`${ids.length} persons exported: ${idList}`);
-    if (!/^1-\d+$/.test(idList)) {
+    let {personIds, familyIds} = await getIdsExported(newFile);
+    const personIdList = numberList.stringify(personIds);
+    console.log(`${personIds.length} persons exported: ${personIdList}`);
+    if (!/^1-\d+$/.test(personIdList)) {
         throw new Error('Some persons were skipped');
     }
+    familyIds = familyIds.sort();
+    console.warn(familyIds);
 }
 
 async function getIdsExported(file) {
-    const ids = [];
-    await eachLine(file, function (line, last) {
-        const m = line.match(/^\s*FULL NAME:.+\(#(\d+)\)$/m);
+    const regExps = {};
+    for (const key of ['FULL NAME', 'FATHER', 'MOTHER']) {
+        regExps[key] = new RegExp(`^\\s*${key}:.+\\(#(\\d+)\\)$`, 'm');
+    }
+    const personIds = [];
+    const familyIds = [];
+    await eachLine(file, {separator: '\f', buffer: 4096}, function (page, last) {
+        page = page.replace(/\r\n/g, '\n');
+        let m = page.match(regExps['FULL NAME']);
+        let personId;
         if (m) {
-            ids.push(+m[1]);
+            personId = +m[1];
+            personIds.push(personId);
+        }
+        const parentIds = [];
+        for (const key of ['FATHER', 'MOTHER']) {
+            const m = page.match(regExps[key]);
+            if (m) {
+                parentIds.push(+m[1]);
+            }
+        }
+        if (parentIds.length) {
+            const familyId = makeFamilyId(parentIds);
+            if (!familyIds.includes(familyId)) {
+                familyIds.push(familyId);
+            }
+        }
+        m = page.match(/^ *SPOUSES: (.*(?:\n {10,}.+)*)$/m);
+        if (m) {
+            const spouseIds = extractIds(m[1]);
+            for (const spouseId of spouseIds) {
+                const familyId = makeFamilyId([personId, spouseId]);
+                if (!familyIds.includes(familyId)) {
+                    familyIds.push(familyId);
+                }
+            }
         }
         return !last;
     });
+    return {personIds, familyIds};
+}
+
+function extractIds(s) {
+    const ids = [];
+    const pattern = /\(#(\d+)\)/g;
+    let m;
+    while ((m = pattern.exec(s))) {
+        if (!ids.includes(m[1])) {
+            ids.push(m[1]);
+        }
+    }
     return ids;
+}
+
+function makeFamilyId(ids) {
+    if (ids.length === 1) {
+        ids[1] = 0;
+    }
+    else {
+        ids = ids.sort((a, b) => a - b);
+    }
+    return ids.join('-');
 }
 
 function pause(delay) {

@@ -179,9 +179,9 @@ function printPersonRecord(properties) {
                 break;
             }
             case 'SPOUSES': {
-                const ids = extractIds(value);
-                for (const id of ids) {
-                    data.tree.push({tag: 'FAMS', data: familyPointer(personId, id)});
+                const spouseIds = extractIds(value);
+                for (const spouseId of spouseIds) {
+                    data.tree.push({tag: 'FAMS', data: familyPointer([personId, spouseId])});
                 }
                 break;
             }
@@ -196,7 +196,7 @@ function printPersonRecord(properties) {
         }
     }
     if (parents.length) {
-        data.tree.push({tag: 'FAMC', data: familyPointer(parents[0], parents[1])});
+        data.tree.push({tag: 'FAMC', data: familyPointer(parents)});
     }
     for (const type of ['Father', 'Mother', 'Other']) {
         if (sources[type]) {
@@ -239,13 +239,16 @@ function personPointer(id) {
     return `@P${id}@`;
 }
 
-function familyPointer(id1, id2) {
-    const ids = [id1 || Infinity, id2 || Infinity]
-        .sort((a, b) => a - b)
-        .map(n => n === Infinity ? 'X' : n)
-        .join('-');
-    return `@F${ids}@`;
+function familyPointer(ids) {
+    if (ids.length === 1) {
+        ids[1] = 0;
+    }
+    else {
+        ids = ids.sort((a, b) => a - b);
+    }
+    return '@F' + ids.join('-') + '@';
 }
+
 
 function printRecord(data) {
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
