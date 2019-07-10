@@ -22,21 +22,22 @@ const argv = require('yargs')
 const sendKeys = require('./lib/send-keys');
 const {dosBoxBin, edgeDir, outFile} = require('./lib/config');
 
-generatePersonFile()
+generateFile('person')
+    .then(familyIds => generateFile('family', familyIds))
     .catch(console.error);
 
-async function generatePersonFile() {
+async function generateFile(type, familyIds) {
     await checkOutFile();
     const {pid, exitPromise} = await startDosBox();
     sendKeys.setWindowByPid(pid);
     sendKeys.send('F-EDGE.EXE\r'); // start Family Edge
     await pause(2000)();
-    await printPages();
+    await (type === 'person' ? printPersonPages() : printFamilyPages(familyIds));
     sendKeys.send('qqqn'); // quit Family Edge
     await pause(500)();
     await quitDosBox();
-    const code = await exitPromise;
-    await finish(code);
+    await exitPromise;
+    return await finish(type);
 }
 
 async function checkOutFile() {
@@ -65,15 +66,20 @@ function startDosBox() {
     fe.stderr.setEncoding('utf-8').on('data', console.error);
     const exitPromise = new Promise(function (resolve) {
         fe.on('close', resolve);
-    });
+    })
+        .then(function (code) {
+            if (code) {
+                throw new Error(`DosBox process exited with code ${code}`);
+            }
+        });
     return pause(1000)({pid: fe.pid, exitPromise}); // wait for DosBox to start
 }
 
-async function printPages() {
+async function printPersonPages() {
     const chunkSize = 10;
     const delay = pause(20); // pause 20 ms between records
-    let prevSize = null;
     sendKeys.send(' u{shift+F7}');
+    let prevSize = null;
     for (let i = 1; i <= argv.limit; i++) {
         if (i % chunkSize === 0) {
             process.stderr.write(i + '\r');
@@ -88,26 +94,36 @@ async function printPages() {
     }
 }
 
+async function printFamilyPages(familyIds) {
+    const delay = pause(20); // pause 20 ms between records
+    sendKeys.send(' u{shift+F4}');
+    for (const familyId of familyIds) {
+        const personIds = familyId.split('-');
+        sendKeys.send('p' + personIds[0] + '\rs' + personIds[1] + '\r');
+        await delay();
+    }
+}
+
 function quitDosBox() {
     sendKeys.send('exit\r');
     return pause(200)();
 }
 
-async function finish(code) {
-    if (code) {
-        throw new Error(`DosBox process exited with code ${code}`);
-    }
-    const newFile = __dirname + '/persons.doc';
+async function finish(type) {
+    const newFile = `${__dirname}/${type}.doc`;
     await fs.rename(outFile, newFile);
     console.log(`Output written to ${newFile}`);
-    let {personIds, familyIds} = await getIdsExported(newFile);
-    const personIdList = numberList.stringify(personIds);
-    console.log(`${personIds.length} persons exported: ${personIdList}`);
-    if (!/^1-\d+$/.test(personIdList)) {
-        throw new Error('Some persons were skipped');
+    if (type === 'person') {
+        let {personIds, familyIds} = await getIdsExported(newFile);
+        const personIdList = numberList.stringify(personIds);
+        console.log(`${personIds.length} persons exported: ${personIdList}`);
+        if (!/^1-\d+$/.test(personIdList)) {
+            throw new Error('Some persons were skipped');
+        }
+        familyIds = familyIds.sort();
+        console.warn(familyIds);
+        return familyIds;
     }
-    familyIds = familyIds.sort();
-    console.warn(familyIds);
 }
 
 async function getIdsExported(file) {
