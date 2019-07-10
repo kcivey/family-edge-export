@@ -4,15 +4,16 @@ const util = require('util');
 const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
+const sourceStore = require('./lib/source-store');
 const inFile = __dirname + '/person.doc';
 const sexById = {}; // sex of persons by ID
 
 printHeaderRecord();
-printPersonRecords();
+printPersonRecords().then(() => printSourceRecords());
 
 function printPersonRecords() {
     let count = 0;
-    eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
+    return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         page = page.replace(/\r\n/g, '\n')
             .replace(/^.+\n=+\n/, '')
             .replace(/\nFrom: .+$/s, '\n');
@@ -136,7 +137,7 @@ function printPersonRecord(properties) {
                     data.tree.push({tag: 'SEX', data: sexById[id]});
                 }
                 if (sources['Name']) {
-                    data.tree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources['Name']}]});
+                    data.tree.push(sourceStore.getCitation(sources['Name']));
                 }
                 personId = id;
                 break;
@@ -159,7 +160,7 @@ function printPersonRecord(properties) {
                     const type = {BORN: 'Birth', DIED: 'Death'}[key];
                     const dateTree = [];
                     if (type && sources[type]) {
-                        dateTree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources[type]}]});
+                        dateTree.push(sourceStore.getCitation(sources[type]));
                     }
                     tree.push({tag: 'DATE', data: date, tree: dateTree});
                 }
@@ -167,7 +168,7 @@ function printPersonRecord(properties) {
                     const type = {BORN: 'BPlace', DIED: 'DPlace'}[key];
                     const placeTree = [];
                     if (type && sources[type]) {
-                        placeTree.push({tag: 'SOUR', tree: [{tag: 'TITL', data: sources[type]}]});
+                        placeTree.push(sourceStore.getCitation(sources[type]));
                     }
                     tree.push({tag: 'PLAC', data: place, tree: placeTree});
                 }
@@ -222,13 +223,9 @@ function printPersonRecord(properties) {
     }
     for (const type of ['Father', 'Mother', 'Other']) {
         if (sources[type]) {
-            data.tree.push({
-                tag: 'SOUR',
-                tree: [
-                    {tag: 'TITL', data: sources[type]},
-                    {tag: 'NOTE', data: type},
-                ],
-            });
+            const citation = sourceStore.getCitation(sources[type]);
+            citation.tree.push({tag: 'NOTE', data: type});
+            data.tree.push(citation);
         }
     }
     printRecord(data);
@@ -301,6 +298,11 @@ function extractIds(s) {
         }
     }
     return ids;
+}
+
+function printSourceRecords() {
+    const data = sourceStore.getRecords();
+    process.stdout.write(generateGedcom(fixData(data)) + '\n');
 }
 
 function fixData(data) {
