@@ -7,22 +7,33 @@ const eachLine = util.promisify(require('line-reader').eachLine);
 const {PersonParser, FamilyParser} = require('./lib/parser');
 const sourceStore = require('./lib/source-store');
 const inFile = __dirname + '/person.doc';
-const sexById = {}; // sex of persons by ID
 
-printHeadRecord();
-printPersonRecords().then(printSourceRecords)
-    .catch(console.error);
+main();
 
-function printPersonRecords() {
+async function main() {
+    printHeadRecord();
+    const familyData = await getFamilyData();
+    // Sex is missing from the person pages, so we have to get it from family
+    const sexById = await getSexById(familyData);
+    await printPersonRecords(sexById);
+    await printFamilyRecords(familyData);
+    await printSourceRecords();
+}
+
+function printPersonRecords(sexById) {
     let count = 0;
     return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new PersonParser(page);
-        const record = parser.getProperties();
-        printPersonRecord(record);
+        const properties = parser.getProperties();
+        const personId = parser.getPersonId();
+        if (sexById[personId]) {
+            properties['SEX'] = sexById[personId];
+        }
+        printPersonRecord(properties);
         count++;
         return !last;
     })
-        .then(() => console.log(`${count} persons exported`));
+        .then(() => console.warn(`${count} person records written`));
 }
 
 function printHeadRecord() {
@@ -85,15 +96,16 @@ function printPersonRecord(properties) {
                 data.pointer = personPointer(id);
                 data.tag = 'INDI';
                 data.tree.push({tag: 'NAME', data: name});
-                if (sexById[id]) {
-                    data.tree.push({tag: 'SEX', data: sexById[id]});
-                }
                 if (sources['Name']) {
                     data.tree.push(sourceStore.getCitation(sources['Name']));
                 }
                 personId = id;
                 break;
             }
+            case 'SEX':
+                // Insert as second, after name
+                data.tree.splice(1, 0, {tag: 'SEX', data: value});
+                break;
             case 'BORN':
             case 'DIED':
             case 'BURIED':
@@ -148,7 +160,6 @@ function printPersonRecord(properties) {
             case 'MOTHER': {
                 const {id} = parseName(value);
                 if (id) {
-                    sexById[id] = key === 'FATHER' ? 'M' : 'F';
                     parents.push(id);
                 }
                 break;
@@ -256,18 +267,39 @@ function printSourceRecords() {
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
 }
 
-function printFamilyRecords() {
+function getFamilyData() {
     const inFile = __dirname + '/family.doc';
+    const data = {};
     let count = 0;
     return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new FamilyParser(page);
-        const record = parser.getProperties();
-        console.warn(record);
+        const properties = parser.getProperties();
+        const familyId = parser.getFamilyId();
+        if (data[familyId]) {
+            // This is a second (or later) page. Combine the children with earlier ones
+            Object.assign(data[familyId]['CHILDREN'], properties['CHILDREN']);
+        }
+        else {
+            data[familyId] = properties;
+        }
         count++;
         return !last;
     })
-        .then(() => console.log(count))
-        .catch(console.error);
+        .then(() => console.warn(`${count} family records read`))
+        .then(() => data);
+}
+
+function getSexById(familyData) {
+    const sexById = {};
+    for (const family of Object.values(familyData)) {
+        Object.assign(sexById, family['CHILDREN']);
+
+    }
+    return sexById;
+}
+
+function printFamilyRecords(familyData) {
+
 }
 
 function fixData(data) {
