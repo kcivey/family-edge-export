@@ -4,13 +4,14 @@ const util = require('util');
 const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
-const {PersonParser} = require('./lib/parser');
+const {PersonParser, FamilyParser} = require('./lib/parser');
 const sourceStore = require('./lib/source-store');
 const inFile = __dirname + '/person.doc';
 const sexById = {}; // sex of persons by ID
 
-printHeaderRecord();
-printPersonRecords().then(() => printSourceRecords());
+printHeadRecord();
+printPersonRecords().then(printSourceRecords)
+    .catch(console.error);
 
 function printPersonRecords() {
     let count = 0;
@@ -21,11 +22,10 @@ function printPersonRecords() {
         count++;
         return !last;
     })
-        .then(() => console.log(count))
-        .catch(console.error);
+        .then(() => console.log(`${count} persons exported`));
 }
 
-function printHeaderRecord() {
+function printHeadRecord() {
     printRecord({
         tag: 'HEAD',
         tree: [
@@ -220,7 +220,6 @@ function familyPointer(ids) {
     return '@F' + ids.join('-') + '@';
 }
 
-
 function printRecord(data) {
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
 }
@@ -255,6 +254,20 @@ function extractIds(s) {
 function printSourceRecords() {
     const data = sourceStore.getRecords();
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
+}
+
+function printFamilyRecords() {
+    const inFile = __dirname + '/family.doc';
+    let count = 0;
+    return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
+        const parser = new FamilyParser(page);
+        const record = parser.getProperties();
+        console.warn(record);
+        count++;
+        return !last;
+    })
+        .then(() => console.log(count))
+        .catch(console.error);
 }
 
 function fixData(data) {
