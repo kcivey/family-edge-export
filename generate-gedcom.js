@@ -368,7 +368,7 @@ function fixData(data) {
         }
         newRecord.data = newRecord.data.replace(/\s+/g, ' ');
         let note = '';
-        const m = newRecord.tag !== 'NOTE' && newRecord.data.match(/;? \[NOTE: ([^\]]+)]$/);
+        const m = !['NOTE', 'CONC'].includes(newRecord.tag) && newRecord.data.match(/;? \[NOTE: ([^\]]+)]$/);
         if (m) {
             note = m[1];
             newRecord.data = newRecord.data.substr(0, newRecord.data.length - m[0].length);
