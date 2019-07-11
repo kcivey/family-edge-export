@@ -27,7 +27,7 @@ const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
 const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
 
-main();
+main().catch(console.error);
 
 async function main() {
     const familyIds = await generateFile('person');

@@ -8,7 +8,7 @@ const {PersonParser, FamilyParser} = require('./lib/parser');
 const sourceStore = require('./lib/source-store');
 const inFile = __dirname + '/person.doc';
 
-main();
+main().catch(console.error);
 
 async function main() {
     printHeader();
