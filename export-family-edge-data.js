@@ -153,7 +153,11 @@ async function getIdsExported(file) {
         }
         return !last;
     });
-    familyIds = familyIds.sort();
+    familyIds = familyIds.sort(function (a, b) {
+        const [a1, a2] = a.split('-');
+        const [b1, b2] = b.split('-');
+        return (a1 - b1) || (a2 - b2);
+    });
     return {personIds, familyIds};
 }
 
