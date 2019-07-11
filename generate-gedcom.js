@@ -143,12 +143,7 @@ function printPersonRecord(properties) {
                 const {date, place} = parseDatePlace(value);
                 const tree = [];
                 if (date) {
-                    const type = {BORN: 'Birth', DIED: 'Death'}[key];
-                    const dateTree = [];
-                    if (type && sources[type]) {
-                        dateTree.push(sourceStore.getCitation(sources[type]));
-                    }
-                    tree.push({tag: 'DATE', data: date, tree: dateTree});
+                    tree.push({tag: 'DATE', data: date});
                 }
                 if (place) {
                     const type = {BORN: 'BPlace', DIED: 'DPlace'}[key];
@@ -157,6 +152,10 @@ function printPersonRecord(properties) {
                         placeTree.push(sourceStore.getCitation(sources[type]));
                     }
                     tree.push({tag: 'PLAC', data: place, tree: placeTree});
+                }
+                const type = {BORN: 'Birth', DIED: 'Death'}[key];
+                if (type && sources[type]) {
+                    tree.push(sourceStore.getCitation(sources[type]));
                 }
                 if (key === 'BURIED' && properties['TOMBSTONE']) {
                     tree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
