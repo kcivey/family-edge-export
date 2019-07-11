@@ -27,9 +27,12 @@ const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
 const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
 
-generateFile('person')
-    .then(familyIds => generateFile('family', familyIds))
-    .catch(console.error);
+main();
+
+async function main() {
+    const familyIds = await generateFile('person');
+    await generateFile('family', familyIds);
+}
 
 async function generateFile(type, familyIds) {
     await checkOutFile();
@@ -42,7 +45,7 @@ async function generateFile(type, familyIds) {
     await pause(500)();
     await quitDosBox();
     await exitPromise;
-    return await finish(type);
+    return await finish(type, type === 'person' ? undefined : familyIds.length);
 }
 
 async function checkOutFile() {
@@ -102,6 +105,7 @@ async function printPersonPages() {
 async function printFamilyPages(familyIds) {
     const delay = pause(20); // pause 20 ms between records
     sendKeys.send(' u{shift+F4}');
+    console.log(`${familyIds.length} families to export`);
     for (const familyId of familyIds) {
         const personIds = familyId.split('-');
         sendKeys.send('p' + personIds[0] + '\rs' + personIds[1] + '\r');
@@ -114,7 +118,7 @@ function quitDosBox() {
     return pause(200)();
 }
 
-async function finish(type) {
+async function finish(type, expectedFamilies) {
     const newFile = `${__dirname}/${type}.doc`;
     await fs.rename(outFile, newFile);
     console.log(`Output written to ${newFile}`);
@@ -128,8 +132,11 @@ async function finish(type) {
         return familyIds;
     }
     else {
-        const count = await countFamilyRecords(newFile);
-        console.log(`${count} families exported`);
+        const {families, pages} = await countFamilyRecords(newFile);
+        console.log(`${families} families exported (${pages} pages)`);
+        if (families !== expectedFamilies) {
+            throw new Error('Not all families were exported');
+        }
     }
 }
 
@@ -162,9 +169,16 @@ async function getIdsExported(file) {
 }
 
 async function countFamilyRecords(file) {
-    let count = 0;
-    await eachLine(file, {separator: '\f', buffer: 4096}, () => count++);
-    return count;
+    let pages = 0;
+    let families = 0;
+    await eachLine(file, {separator: '\f', buffer: 4096}, function(page, last) {
+        if (!page.match(/ FAMILY GROUP SHEET -p\d+-/)) {
+            families++;
+        }
+        pages++;
+        return !last;
+    });
+    return {pages, families};
 }
 
 function pause(delay) {
