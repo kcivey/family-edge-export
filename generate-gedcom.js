@@ -342,6 +342,7 @@ function printFamilyRecords(familyData) {
             tree,
         });
     }
+    console.warn(`${Object.keys(familyData).length} family records written`);
 }
 
 function printTrailer() {

@@ -127,6 +127,10 @@ async function finish(type) {
         }
         return familyIds;
     }
+    else {
+        const count = await countFamilyRecords(newFile);
+        console.log(`${count} families exported`);
+    }
 }
 
 async function getIdsExported(file) {
@@ -151,6 +155,12 @@ async function getIdsExported(file) {
     });
     familyIds = familyIds.sort();
     return {personIds, familyIds};
+}
+
+async function countFamilyRecords(file) {
+    let count = 0;
+    await eachLine(file, {separator: '\f', buffer: 4096}, () => count++);
+    return count;
 }
 
 function pause(delay) {
