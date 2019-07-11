@@ -16,7 +16,7 @@ function printPersonRecords() {
     let count = 0;
     return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new PersonParser(page);
-        const record = parser.getPersonData();
+        const record = parser.getProperties();
         printPersonRecord(record);
         count++;
         return !last;

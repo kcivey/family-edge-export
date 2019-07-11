@@ -22,6 +22,7 @@ const argv = require('yargs')
     .strict(true)
     .argv;
 const sendKeys = require('./lib/send-keys');
+const {PersonParser} = require('./lib/parser');
 const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
 const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
@@ -132,13 +133,17 @@ async function getIdsExported(file) {
     const personIds = [];
     let familyIds = [];
     await eachLine(file, {separator: '\f', buffer: 4096}, function (page, last) {
-        page = page.replace(/\r\n/g, '\n');
-        const personId = extractPersonId(page);
+        const parser = new PersonParser(page);
+        const personId = parser.getPersonId();
         personIds.push(personId);
-        const childFamilyId = getChildFamilyId(page);
-        const newFamilyIds = getSpouseFamilyIds(page, personId).concat([childFamilyId]);
+        const newFamilyIds = parser.getSpouseIds()
+            .map(spouseId => makeFamilyId([personId, spouseId])); // spouse family IDs
+        const childFamilyId = makeFamilyId(parser.getParentIds());
+        if (childFamilyId) {
+            newFamilyIds.unshift(childFamilyId);
+        }
         for (const familyId of newFamilyIds) {
-            if (familyId && !familyIds.includes(familyId)) {
+            if (!familyIds.includes(familyId)) {
                 familyIds.push(familyId);
             }
         }
@@ -146,51 +151,6 @@ async function getIdsExported(file) {
     });
     familyIds = familyIds.sort();
     return {personIds, familyIds};
-}
-
-function extractPersonId(page) {
-    const m = page.match(/^\s*FULL NAME:.+\(#(\d+)\)$/m);
-    if (!m) {
-        throw new Error(`Person ID not found\n"${page}"`);
-    }
-    return +m[1];
-}
-
-function getChildFamilyId(page) {
-    const patterns = [
-        /^\s*FATHER:.+\(#(\d+)\)$/m,
-        /^\s*MOTHER:.+\(#(\d+)\)$/m,
-    ];
-    const parentIds = [];
-    for (const pattern of patterns) {
-        const m = page.match(pattern);
-        if (m) {
-            parentIds.push(+m[1]);
-        }
-    }
-    return makeFamilyId(parentIds);
-}
-
-function getSpouseFamilyIds(page, personId) {
-    let familyIds = [];
-    const m = page.match(/^ *SPOUSES: (.*(?:\n {10,}.+)*)$/m);
-    if (m) {
-        familyIds = extractIds(m[1])
-            .map(spouseId => makeFamilyId([personId, spouseId]));
-    }
-    return familyIds;
-}
-
-function extractIds(s) {
-    const ids = [];
-    const pattern = /\(#(\d+)\)/g;
-    let m;
-    while ((m = pattern.exec(s))) {
-        if (!ids.includes(m[1])) {
-            ids.push(m[1]);
-        }
-    }
-    return ids;
 }
 
 function makeFamilyId(ids) {
