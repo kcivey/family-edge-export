@@ -219,18 +219,22 @@ function parseName(s) {
     if (!s) {
         return {};
     }
-    const m = s.match(/^(.+) \(#(\d+)\)$/);
+    const m = s.match(/^(.+?)(?: ([JS]r|I+|IV|VI*))?\.? \(#(\d+)\)$/);
     if (!m) {
         throw new Error(`Unexpected person format "${s}"`);
     }
-    const id = m[2];
-    const name = m[1].replace(/\b[A-Z'-]{2,}(?:\b \b[A-Z'-]{2,})*\b|\?{3}$/,
+    let [, name, suffix, id] = m;
+    name = name.replace(/\b[A-Z'-]{2,}(?:\b \b[A-Z'-]{2,})*$|\?{3}$/,
         surname => '/' + titleCase(surname) + '/');
+    if (suffix) {
+        name += ' ' + suffix;
+    }
+    id = +id;
     return {name, id};
 }
 
 function titleCase(s) {
-    return s.replace(/[^\W_]+/, initialCap)
+    return s.replace(/[^\W_]+/g, initialCap)
         .replace(/^(Mc)(\w+)/, (m, m1, m2) => m1 + initialCap(m2));
 }
 
