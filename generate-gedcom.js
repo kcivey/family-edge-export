@@ -263,8 +263,10 @@ function parseDatePlace(s) {
         throw new Error(`Unexpected date-place format "${s}"`);
     }
     const prefix = m[1] && (m[1] === 'roughly' ? 'EST' : 'ABT');
-    let date = m[2] && m[2].toUpperCase();
     const place = m[3] && m[3].replace(/,? ([A-Z]{2})$/, ', $1');
+    // GEDCOM wants uppercase month, and requires 2 digits after slash in dual years
+    let date = m[2] && m[2].toUpperCase()
+        .replace(/(\d\d)\/\d$/, (m, m1) => m1 + '/' + (+m1 + 101).toString().substr(1, 2));
     if (date && prefix) {
         date = prefix + ' ' + date;
     }
