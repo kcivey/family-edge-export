@@ -22,7 +22,7 @@ const argv = require('yargs')
     .strict(true)
     .argv;
 const sendKeys = require('./lib/send-keys');
-const {PersonParser} = require('./lib/parser');
+const {PersonParser, makeFamilyId} = require('./lib/parser');
 const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
 const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
@@ -151,19 +151,6 @@ async function getIdsExported(file) {
     });
     familyIds = familyIds.sort();
     return {personIds, familyIds};
-}
-
-function makeFamilyId(ids) {
-    if (ids.length === 0) {
-        return null;
-    }
-    if (ids.length === 1) {
-        ids.push(0);
-    }
-    else {
-        ids = ids.sort((a, b) => a - b);
-    }
-    return ids.join('-');
 }
 
 function pause(delay) {
