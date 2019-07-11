@@ -11,13 +11,14 @@ const inFile = __dirname + '/person.doc';
 main();
 
 async function main() {
-    printHeadRecord();
+    printHeader();
     const familyData = await getFamilyData();
     // Sex is missing from the person pages, so we have to get it from family
     const sexById = await getSexById(familyData);
     await printPersonRecords(sexById);
     await printFamilyRecords(familyData);
     await printSourceRecords();
+    printTrailer();
 }
 
 function printPersonRecords(sexById) {
@@ -36,49 +37,70 @@ function printPersonRecords(sexById) {
         .then(() => console.warn(`${count} person records written`));
 }
 
-function printHeadRecord() {
-    printRecord({
-        tag: 'HEAD',
-        tree: [
-            {
-                tag: 'CHAR',
-                data: 'UTF-8',
-            },
-            {
-                tag: 'SOUR',
-                data: 'The Family Edge Plus',
-                tree: [
-                    {
-                        tag: 'VERS',
-                        data: '2.5b',
-                    },
-                ],
-            },
-            {
-                tag: 'GEDC',
-                tree: [
-                    {
-                        tag: 'VERS',
-                        data: '5.5',
-                    },
-                    {
-                        tag: 'FORM',
-                        data: 'LINEAGE-LINKED',
-                    },
-                ],
-            },
-            {
-                tag: 'DATE',
-                data: moment().utc().format('DD MMM YYYY').toUpperCase(),
-                tree: [
-                    {
-                        tag: 'TIME',
-                        data: moment().utc().format('HH:mm:ss'),
-                    },
-                ],
-            },
-        ],
-    });
+function printHeader() {
+    const submitterPointer = '@KCIVEY@';
+    printRecord([
+        {
+            tag: 'HEAD',
+            tree: [
+                {
+                    tag: 'CHAR',
+                    data: 'ASCII',
+                },
+                {
+                    tag: 'SOUR',
+                    data: '{FamilyEdge}',
+                    tree: [
+                        {
+                            tag: 'NAME',
+                            data: 'The Family Edge Plus',
+                        },
+                        {
+                            tag: 'VERS',
+                            data: '2.5b',
+                        },
+                    ],
+                },
+                {
+                    tag: 'GEDC',
+                    tree: [
+                        {
+                            tag: 'VERS',
+                            data: '5.5.1',
+                        },
+                        {
+                            tag: 'FORM',
+                            data: 'LINEAGE-LINKED',
+                        },
+                    ],
+                },
+                {
+                    tag: 'DATE',
+                    data: moment().utc().format('DD MMM YYYY').toUpperCase(),
+                    tree: [
+                        {
+                            tag: 'TIME',
+                            data: moment().utc().format('HH:mm:ss'),
+                        },
+                    ],
+                },
+                {
+                    tag: 'SUBM',
+                    data: submitterPointer,
+                },
+            ],
+        },
+        {
+            pointer: submitterPointer,
+            tag: 'SUBM',
+            tree: [
+                {
+                    tag: 'NAME',
+                    data: 'Keith Calvert Ivey',
+                },
+            ],
+        },
+    ]);
 }
 
 function printPersonRecord(properties) {
@@ -321,6 +343,10 @@ function printFamilyRecords(familyData) {
             tree,
         });
     }
+}
+
+function printTrailer() {
+    printRecord({tag: 'TRLR'});
 }
 
 function fixData(data) {
