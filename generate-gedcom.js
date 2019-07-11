@@ -21,9 +21,9 @@ async function main() {
     printTrailer();
 }
 
-function printPersonRecords(sexById) {
+async function printPersonRecords(sexById) {
     let count = 0;
-    return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
+    await eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new PersonParser(page);
         const properties = parser.getProperties();
         const personId = parser.getPersonId();
@@ -33,8 +33,8 @@ function printPersonRecords(sexById) {
         printPersonRecord(properties);
         count++;
         return !last;
-    })
-        .then(() => console.warn(`${count} person records written`));
+    });
+    console.warn(`${count} person records written`);
 }
 
 function printHeader() {
@@ -288,26 +288,26 @@ function printSourceRecords() {
     process.stdout.write(generateGedcom(fixData(data)) + '\n');
 }
 
-function getFamilyData() {
+async function getFamilyData() {
     const inFile = __dirname + '/family.doc';
-    const data = {};
+    const familyData = {};
     let count = 0;
-    return eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
+    await eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new FamilyParser(page);
         const properties = parser.getProperties();
         const familyId = parser.getFamilyId();
-        if (data[familyId]) {
+        if (familyData[familyId]) {
             // This is a second (or later) page. Combine the children with earlier ones
-            Object.assign(data[familyId]['CHILDREN'], properties['CHILDREN']);
+            Object.assign(familyData[familyId]['CHILDREN'], properties['CHILDREN']);
         }
         else {
-            data[familyId] = properties;
+            familyData[familyId] = properties;
         }
         count++;
         return !last;
-    })
-        .then(() => console.warn(`${count} family records read`))
-        .then(() => data);
+    });
+    console.warn(`${Object.keys(familyData).length} family records read (${count} pages)`);
+    return familyData;
 }
 
 function getSexById(familyData) {
