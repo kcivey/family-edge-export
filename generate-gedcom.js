@@ -299,7 +299,28 @@ function getSexById(familyData) {
 }
 
 function printFamilyRecords(familyData) {
-
+    for (const [familyId, properties] of Object.entries(familyData)) {
+        const tree = [];
+        for (const key of ['HUSBAND', 'WIFE']) {
+            const id = properties[key];
+            if (id) {
+                const tag = key.substr(0, 4);
+                const data = '@P' + id + '@';
+                tree.push({tag, data});
+            }
+        }
+        for (const childId of Object.keys(properties['CHILDREN'])) {
+            tree.push({
+                tag: 'CHIL',
+                data: '@P' + childId + '@',
+            });
+        }
+        printRecord({
+            pointer: '@F' + familyId + '@',
+            tag: 'FAM',
+            tree,
+        });
+    }
 }
 
 function fixData(data) {
