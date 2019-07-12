@@ -6,9 +6,10 @@ const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
 const {PersonParser, FamilyParser, makeFamilyId} = require('./lib/parser');
 const sourceStore = require('./lib/source-store');
+const log = require('./lib/logger');
 const inFile = __dirname + '/person.doc';
 
-main().catch(console.error);
+main().catch(err => log.error(err));
 
 async function main() {
     printHeader();
@@ -34,7 +35,7 @@ async function printPersonRecords(sexById) {
         count++;
         return !last;
     });
-    console.warn(`${count} person records written`);
+    log.success(`${count} person records written`);
 }
 
 function printHeader() {
@@ -176,7 +177,7 @@ function printPersonRecord(properties) {
                 // skip
                 break;
             default:
-                console.warn(`Skipping ${key}`);
+                log.warn(`Skipping ${key}`);
         }
     }
     if (parents.length) {
@@ -325,7 +326,7 @@ async function getFamilyData() {
         count++;
         return !last;
     });
-    console.warn(`${Object.keys(familyData).length} family records read (${count} pages)`);
+    log.success(`${Object.keys(familyData).length} family records read (${count} pages)`);
     return familyData;
 }
 
@@ -361,7 +362,7 @@ function printFamilyRecords(familyData) {
             tree,
         });
     }
-    console.warn(`${Object.keys(familyData).length} family records written`);
+    log.success(`${Object.keys(familyData).length} family records written`);
 }
 
 function printTrailer() {

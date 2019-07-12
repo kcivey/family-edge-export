@@ -23,11 +23,12 @@ const argv = require('yargs')
     .argv;
 const sendKeys = require('./lib/send-keys');
 const {PersonParser, makeFamilyId} = require('./lib/parser');
+const log = require('./lib/logger');
 const dosBoxBin = '/usr/bin/dosbox';
 const edgeDir = os.homedir() + '/dos/F-EDGE';
 const outFile = edgeDir + '/DATA/' + moment().format('DMMMYY').toUpperCase() + '.DOC';
 
-main().catch(console.error);
+main().catch(log.error);
 
 async function main() {
     const familyIds = await generateFile('person');
@@ -70,8 +71,8 @@ async function checkOutFile() {
 
 function startDosBox() {
     const fe = spawn(dosBoxBin, [edgeDir], {cwd: '.'});
-    fe.stdout.setEncoding('utf-8').on('data', console.log);
-    fe.stderr.setEncoding('utf-8').on('data', console.error);
+    fe.stdout.setEncoding('utf-8').on('data', log);
+    fe.stderr.setEncoding('utf-8').on('data', log.error);
     const exitPromise = new Promise(function (resolve) {
         fe.on('close', resolve);
     })
@@ -105,7 +106,7 @@ async function printPersonPages() {
 async function printFamilyPages(familyIds) {
     const delay = pause(20); // pause 20 ms between records
     sendKeys.send(' u{shift+F4}');
-    console.log(`${familyIds.length} families to export`);
+    log.info(`${familyIds.length} families to export`);
     for (const familyId of familyIds) {
         const personIds = familyId.split('-');
         // Add space after first enter because when someone has a huge number of children
@@ -124,11 +125,11 @@ function quitDosBox() {
 async function finish(type, expectedFamilies) {
     const newFile = `${__dirname}/${type}.doc`;
     await fs.rename(outFile, newFile);
-    console.log(`Output written to ${newFile}`);
+    log.success(`Output written to ${newFile}`);
     if (type === 'person') {
         const {personIds, familyIds} = await getIdsExported(newFile);
         const personIdList = numberList.stringify(personIds);
-        console.log(`${personIds.length} persons exported: ${personIdList}`);
+        log.success(`${personIds.length} persons exported: ${personIdList}`);
         if (!/^1-\d+$/.test(personIdList)) {
             throw new Error('Some persons were skipped');
         }
@@ -136,7 +137,7 @@ async function finish(type, expectedFamilies) {
     }
     else {
         const {families, pages} = await countFamilyRecords(newFile);
-        console.log(`${families} families exported (${pages} pages)`);
+        log.success(`${families} families exported (${pages} pages)`);
         if (families !== expectedFamilies) {
             throw new Error('Not all families were exported');
         }

@@ -40,6 +40,7 @@
         "padded-blocks": ["error", {"classes":  "always"}],
         "max-len": ["error", {"code":  120}],
         "no-undef": "error",
-        "eqeqeq": ["error", "smart"]
+        "eqeqeq": ["error", "smart"],
+        "prefer-rest-params": "off"
     }
 }
