@@ -118,9 +118,7 @@ function printPersonRecord(properties) {
                 data.pointer = personPointer(id);
                 data.tag = 'INDI';
                 data.tree.push({tag: 'NAME', data: name});
-                if (sources['Name']) {
-                    data.tree.push(sourceStore.getCitation(sources['Name']));
-                }
+                data.tree.push(...sourceStore.getCitations(sources['Name']));
                 personId = id;
                 break;
             }
@@ -145,18 +143,19 @@ function printPersonRecord(properties) {
                 if (date) {
                     tree.push({tag: 'DATE', data: date});
                 }
+                const type = {BORN: 'Birth', DIED: 'Death'}[key];
+                const dateSources = sources[type] || []; // attach to whole event since DATE can't have SOUR
                 if (place) {
                     const type = {BORN: 'BPlace', DIED: 'DPlace'}[key];
                     const placeTree = [];
-                    if (type && sources[type]) {
-                        placeTree.push(sourceStore.getCitation(sources[type]));
+                    if (type) {
+                        const placeSources = (sources[type] || [])
+                            .filter(source => !dateSources.includes(source));
+                        placeTree.push(...sourceStore.getCitations(placeSources));
                     }
                     tree.push({tag: 'PLAC', data: place, tree: placeTree});
                 }
-                const type = {BORN: 'Birth', DIED: 'Death'}[key];
-                if (type && sources[type]) {
-                    tree.push(sourceStore.getCitation(sources[type]));
-                }
+                tree.push(...sourceStore.getCitations(dateSources));
                 if (key === 'BURIED' && properties['TOMBSTONE']) {
                     tree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
                 }
@@ -205,14 +204,29 @@ function printPersonRecord(properties) {
     if (parents.length) {
         data.tree.push({tag: 'FAMC', data: familyPointer(parents)});
     }
+    data.tree.push(...getCitationsForRecord(sources));
+    printRecord(data);
+}
+
+function getCitationsForRecord(sources) {
+    const sourcesByTitle = [];
     for (const type of ['Father', 'Mother', 'Other']) {
-        if (sources[type]) {
-            const citation = sourceStore.getCitation(sources[type]);
-            citation.tree.push({tag: 'NOTE', data: type});
-            data.tree.push(citation);
+        for (const title of sources[type] || []) {
+            if (!sourcesByTitle[title]) {
+                sourcesByTitle[title] = [];
+            }
+            sourcesByTitle[title].push(type);
         }
     }
-    printRecord(data);
+    const citations = [];
+    for (const [title, types] of Object.entries(sourcesByTitle)) {
+        let note = types.includes('Other') ? '' : types.join(', ');
+        if (note === 'Father, Mother') {
+            note = 'Parents';
+        }
+        citations.push(sourceStore.getCitation(title, note));
+    }
+    return citations;
 }
 
 function parseName(s) {
