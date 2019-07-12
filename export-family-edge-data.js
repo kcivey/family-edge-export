@@ -174,7 +174,7 @@ async function getIdsExported(file) {
 async function countFamilyRecords(file) {
     let pages = 0;
     let families = 0;
-    await eachLine(file, {separator: '\f', buffer: 4096}, function(page, last) {
+    await eachLine(file, {separator: '\f', buffer: 4096}, function (page, last) {
         if (!page.match(/ FAMILY GROUP SHEET -p\d+-/)) {
             families++;
         }
