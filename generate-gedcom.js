@@ -131,6 +131,10 @@ function printPersonRecord(properties) {
             case 'BURIED':
             case 'LOCATION':
             case 'CHRISTENED': {
+                const eventTree = getEventTree(key, value, sources);
+                if (key === 'BURIED' && properties['TOMBSTONE']) {
+                    eventTree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
+                }
                 const tag = {
                     BORN: 'BIRT',
                     DIED: 'DEAT',
@@ -138,37 +142,11 @@ function printPersonRecord(properties) {
                     LOCATION: 'RESI',
                     CHRISTENED: 'CHR',
                 }[key];
-                const {date, place} = parseDatePlace(value);
-                const tree = [];
-                if (date) {
-                    tree.push({tag: 'DATE', data: date});
-                }
-                const type = {BORN: 'Birth', DIED: 'Death'}[key];
-                const dateSources = sources[type] || []; // attach to whole event since DATE can't have SOUR
-                if (place) {
-                    const type = {BORN: 'BPlace', DIED: 'DPlace'}[key];
-                    const placeTree = [];
-                    if (type) {
-                        const placeSources = (sources[type] || [])
-                            .filter(source => !dateSources.includes(source));
-                        placeTree.push(...sourceStore.getCitations(placeSources));
-                    }
-                    tree.push({tag: 'PLAC', data: place, tree: placeTree});
-                }
-                tree.push(...sourceStore.getCitations(dateSources));
-                if (key === 'BURIED' && properties['TOMBSTONE']) {
-                    tree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
-                }
-                data.tree.push({tag, tree});
+                data.tree.push({tag, tree: eventTree});
                 break;
             }
             case 'OCCUPATION':
-                data.tree.push(
-                    {
-                        tag: 'OCCU',
-                        data: value,
-                    }
-                );
+                data.tree.push({tag: 'OCCU', data: value});
                 break;
             case 'NOTE':
             case 'HISTORY NOTES':
@@ -291,6 +269,23 @@ function normalizeDate(date) {
     // GEDCOM wants uppercase month, and requires 2 digits after slash in dual years
     return date.toUpperCase()
         .replace(/(\d\d)\/\d$/, (m, m1) => m1 + '/' + (+m1 + 101).toString().substr(1, 2));
+}
+
+function getEventTree(key, value, sources) {
+    const {date, place} = parseDatePlace(value);
+    const [type, placeType] = key === 'BORN' ? ['Birth', 'BPlace'] : key == 'DIED' ? ['Death', 'DPlace'] : [];
+    const eventTree = [];
+    if (date) {
+        eventTree.push({tag: 'DATE', data: date});
+    }
+    const eventSources = sources[type] || []; // attach to whole event since DATE can't have SOUR
+    if (place) {
+        const placeSources = (sources[placeType] || [])
+            .filter(source => !eventSources.includes(source)); // exclude any already on higher level
+        eventTree.push({tag: 'PLAC', data: place, tree: sourceStore.getCitations(placeSources)});
+    }
+    eventTree.push(...sourceStore.getCitations(eventSources));
+    return eventTree;
 }
 
 function extractIds(s) {
