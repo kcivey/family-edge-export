@@ -108,7 +108,10 @@ async function printFamilyPages(familyIds) {
     console.log(`${familyIds.length} families to export`);
     for (const familyId of familyIds) {
         const personIds = familyId.split('-');
-        sendKeys.send('p' + personIds[0] + '\rs' + personIds[1] + '\r');
+        // Add space after first enter because when someone has a huge number of children
+        // you have to press a key to see "more" before you can enter the spouse. Fortunately
+        // the space is ignored in the usual case.
+        sendKeys.send('p' + personIds[0] + '\r s' + personIds[1] + '\r');
         await delay();
     }
 }
