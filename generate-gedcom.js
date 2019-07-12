@@ -275,7 +275,7 @@ function normalizeDate(date) {
 
 function getEventTree(key, value, sources) {
     const {date, place} = parseDatePlace(value);
-    const [type, placeType] = key === 'BORN' ? ['Birth', 'BPlace'] : key == 'DIED' ? ['Death', 'DPlace'] : [];
+    const [type, placeType] = key === 'BORN' ? ['Birth', 'BPlace'] : key === 'DIED' ? ['Death', 'DPlace'] : [];
     const eventTree = [];
     if (date) {
         eventTree.push({tag: 'DATE', data: date});

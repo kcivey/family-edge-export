@@ -39,6 +39,7 @@
         "quotes": ["error", "single", {"avoidEscape":  true}],
         "padded-blocks": ["error", {"classes":  "always"}],
         "max-len": ["error", {"code":  120}],
-        "no-undef": "error"
+        "no-undef": "error",
+        "eqeqeq": ["error", "smart"]
     }
 }
