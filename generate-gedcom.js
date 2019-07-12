@@ -4,7 +4,7 @@ const util = require('util');
 const moment = require('moment');
 const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
-const {PersonParser, FamilyParser} = require('./lib/parser');
+const {PersonParser, FamilyParser, makeFamilyId} = require('./lib/parser');
 const sourceStore = require('./lib/source-store');
 const inFile = __dirname + '/person.doc';
 
@@ -261,13 +261,8 @@ function personPointer(id) {
 }
 
 function familyPointer(ids) {
-    if (ids.length === 1) {
-        ids[1] = 0;
-    }
-    else {
-        ids = ids.sort((a, b) => a - b);
-    }
-    return '@F' + ids.join('-') + '@';
+    const familyId = Array.isArray(ids) ? makeFamilyId(ids) : ids;
+    return familyId && `@F${familyId}@`;
 }
 
 function printRecord(data) {
@@ -353,18 +348,18 @@ function printFamilyRecords(familyData) {
             const id = properties[key];
             if (id) {
                 const tag = key.substr(0, 4);
-                const data = '@P' + id + '@';
+                const data = personPointer(id);
                 tree.push({tag, data});
             }
         }
         for (const childId of Object.keys(properties['CHILDREN'])) {
             tree.push({
                 tag: 'CHIL',
-                data: '@P' + childId + '@',
+                data: personPointer(childId),
             });
         }
         printRecord({
-            pointer: '@F' + familyId + '@',
+            pointer: familyPointer(familyId),
             tag: 'FAM',
             tree,
         });
