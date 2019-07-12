@@ -3,7 +3,7 @@
 const util = require('util');
 const eachLine = util.promisify(require('line-reader').eachLine);
 const {PersonParser, FamilyParser} = require('./lib/parser');
-const gedcomWriter = require('./lib/gedcom-writer').create();
+const gedcomWriter = require('./lib/gedcom-writer');
 const {makeFamilyPointer, makePersonPointer} = gedcomWriter;
 const sourceStore = require('./lib/source-store');
 const log = require('./lib/logger');
