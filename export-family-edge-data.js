@@ -39,12 +39,10 @@ async function generateFile(type, familyIds) {
     await checkOutFile();
     const {pid, exitPromise} = await startDosBox();
     sendKeys.setWindowByPid(pid);
-    sendKeys.send('F-EDGE.EXE\r'); // start Family Edge
-    await pause(2000)();
+    await pause(1000)();
     await (type === 'person' ? printPersonPages() : printFamilyPages(familyIds));
     sendKeys.send('qqqn'); // quit Family Edge
     await pause(500)();
-    await quitDosBox();
     await exitPromise;
     return await finish(type, type === 'person' ? undefined : familyIds.length);
 }
@@ -70,12 +68,10 @@ async function checkOutFile() {
 }
 
 function startDosBox() {
-    const fe = spawn(dosBoxBin, [edgeDir], {cwd: '.'});
-    fe.stdout.setEncoding('utf-8').on('data', log);
+    const fe = spawn(dosBoxBin, [`${edgeDir}/F-EDGE.EXE`, '-exit']);
+    fe.stdout.setEncoding('utf-8').on('data', log.dim);
     fe.stderr.setEncoding('utf-8').on('data', log.error);
-    const exitPromise = new Promise(function (resolve) {
-        fe.on('close', resolve);
-    })
+    const exitPromise = new Promise(resolve => fe.on('close', resolve))
         .then(function (code) {
             if (code) {
                 throw new Error(`DosBox process exited with code ${code}`);
@@ -115,11 +111,6 @@ async function printFamilyPages(familyIds) {
         sendKeys.send('p' + personIds[0] + '\r s' + personIds[1] + '\r');
         await delay();
     }
-}
-
-function quitDosBox() {
-    sendKeys.send('exit\r');
-    return pause(200)();
 }
 
 async function finish(type, expectedFamilies) {
