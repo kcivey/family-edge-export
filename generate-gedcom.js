@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 const util = require('util');
-const moment = require('moment');
-const generateGedcom = require('generate-gedcom');
 const eachLine = util.promisify(require('line-reader').eachLine);
-const {PersonParser, FamilyParser, makeFamilyId} = require('./lib/parser');
+const {PersonParser, FamilyParser} = require('./lib/parser');
+const gedcomWriter = require('./lib/gedcom-writer').create();
+const {makeFamilyPointer, makePersonPointer} = gedcomWriter;
 const sourceStore = require('./lib/source-store');
 const log = require('./lib/logger');
 const inFile = __dirname + '/person.doc';
@@ -39,69 +39,7 @@ async function printPersonRecords(sexById) {
 }
 
 function printHeader() {
-    const submitterPointer = '@KCIVEY@';
-    printRecord([
-        {
-            tag: 'HEAD',
-            tree: [
-                {
-                    tag: 'CHAR',
-                    data: 'ASCII',
-                },
-                {
-                    tag: 'SOUR',
-                    data: '{FamilyEdge}',
-                    tree: [
-                        {
-                            tag: 'NAME',
-                            data: 'The Family Edge Plus',
-                        },
-                        {
-                            tag: 'VERS',
-                            data: '2.5b',
-                        },
-                    ],
-                },
-                {
-                    tag: 'GEDC',
-                    tree: [
-                        {
-                            tag: 'VERS',
-                            data: '5.5.1',
-                        },
-                        {
-                            tag: 'FORM',
-                            data: 'LINEAGE-LINKED',
-                        },
-                    ],
-                },
-                {
-                    tag: 'DATE',
-                    data: moment().utc().format('DD MMM YYYY').toUpperCase(),
-                    tree: [
-                        {
-                            tag: 'TIME',
-                            data: moment().utc().format('HH:mm:ss'),
-                        },
-                    ],
-                },
-                {
-                    tag: 'SUBM',
-                    data: submitterPointer,
-                },
-            ],
-        },
-        {
-            pointer: submitterPointer,
-            tag: 'SUBM',
-            tree: [
-                {
-                    tag: 'NAME',
-                    data: 'Keith Calvert Ivey',
-                },
-            ],
-        },
-    ]);
+    printGedcom(gedcomWriter.getHeader({id: 'KCIVEY', name: 'Keith Calvert Ivey'}));
 }
 
 function printPersonRecord(properties) {
@@ -116,7 +54,7 @@ function printPersonRecord(properties) {
         switch (key) {
             case 'FULL NAME': {
                 const {name} = parseName(value);
-                data.pointer = personPointer(personId);
+                data.pointer = makePersonPointer(personId);
                 data.tag = 'INDI';
                 data.tree.push(
                     {tag: 'NAME', data: name},
@@ -165,9 +103,9 @@ function printPersonRecord(properties) {
                 break;
             }
             case 'SPOUSES': {
-                const spouseIds = extractIds(value);
+                const spouseIds = PersonParser.extractIds(value);
                 for (const spouseId of spouseIds) {
-                    data.tree.push({tag: 'FAMS', data: familyPointer([personId, spouseId])});
+                    data.tree.push({tag: 'FAMS', data: makeFamilyPointer([personId, spouseId])});
                 }
                 break;
             }
@@ -183,10 +121,10 @@ function printPersonRecord(properties) {
         }
     }
     if (parents.length) {
-        data.tree.push({tag: 'FAMC', data: familyPointer(parents)});
+        data.tree.push({tag: 'FAMC', data: makeFamilyPointer(parents)});
     }
     data.tree.push(...getCitationsForRecord(sources));
-    printRecord(data);
+    printGedcom(data);
 }
 
 function getCitationsForRecord(sources) {
@@ -239,17 +177,11 @@ function initialCap(s) {
     return s.substr(0, 1).toUpperCase() + s.substr(1).toLowerCase();
 }
 
-function personPointer(id) {
-    return `@P${id}@`;
-}
-
-function familyPointer(ids) {
-    const familyId = Array.isArray(ids) ? makeFamilyId(ids) : ids;
-    return familyId && `@F${familyId}@`;
-}
-
-function printRecord(data) {
-    process.stdout.write(generateGedcom(fixData(data)) + '\n');
+function printGedcom(text) {
+    if (typeof text !== 'string') {
+        text = gedcomWriter.generateGedcom(text);
+    }
+    return process.stdout.write(text);
 }
 
 function parseDatePlace(s) {
@@ -259,21 +191,12 @@ function parseDatePlace(s) {
         throw new Error(`Unexpected date-place format "${s}"`);
     }
     const prefix = m[1] && (m[1] === 'roughly' ? 'EST' : 'ABT');
-    let date = normalizeDate(m[2]);
+    let date = gedcomWriter.normalizeDate(m[2]);
     if (date && prefix) {
         date = prefix + ' ' + date;
     }
     const place = m[3] && m[3].replace(/,? ([A-Z]{2})$/, ', $1');
     return {date, place};
-}
-
-function normalizeDate(date) {
-    if (!date) {
-        return null;
-    }
-    // GEDCOM wants uppercase month, and requires 2 digits after slash in dual years
-    return date.toUpperCase()
-        .replace(/(\d\d)\/\d$/, (m, m1) => m1 + '/' + (+m1 + 101).toString().substr(1, 2));
 }
 
 function getEventTree(key, value, sources) {
@@ -293,21 +216,8 @@ function getEventTree(key, value, sources) {
     return eventTree;
 }
 
-function extractIds(s) {
-    const ids = [];
-    const pattern = /\(#(\d+)\)/g;
-    let m;
-    while ((m = pattern.exec(s))) {
-        if (!ids.includes(m[1])) {
-            ids.push(m[1]);
-        }
-    }
-    return ids;
-}
-
 function printSourceRecords() {
-    const data = sourceStore.getRecords();
-    process.stdout.write(generateGedcom(fixData(data)) + '\n');
+    printGedcom(sourceStore.getRecords());
 }
 
 async function getFamilyData() {
@@ -348,18 +258,18 @@ function printFamilyRecords(familyData) {
             const id = properties[key];
             if (id) {
                 const tag = key.substr(0, 4);
-                const data = personPointer(id);
+                const data = makePersonPointer(id);
                 tree.push({tag, data});
             }
         }
         for (const childId of Object.keys(properties['CHILDREN'])) {
             tree.push({
                 tag: 'CHIL',
-                data: personPointer(childId),
+                data: makePersonPointer(childId),
             });
         }
-        printRecord({
-            pointer: familyPointer(familyId),
+        printGedcom({
+            pointer: makeFamilyPointer(familyId),
             tag: 'FAM',
             tree,
         });
@@ -368,44 +278,5 @@ function printFamilyRecords(familyData) {
 }
 
 function printTrailer() {
-    printRecord({tag: 'TRLR'});
-}
-
-function fixData(data) {
-    if (!Array.isArray(data)) {
-        data = [data];
-    }
-    const maxLineLength = 80;
-    const newData = [];
-    for (const record of data) {
-        const newRecord = Object.assign(
-            {pointer: '', data: '', tree: []},
-            record,
-        );
-        let allowedLength = maxLineLength - newRecord.tag.length - 3;
-        if (newRecord.pointer) {
-            allowedLength -= newRecord.pointer.length - 1;
-        }
-        newRecord.data = newRecord.data.replace(/\s+/g, ' ');
-        let note = '';
-        const m = !['NOTE', 'CONC'].includes(newRecord.tag) && newRecord.data.match(/;? \[NOTE: ([^\]]+)]$/);
-        if (m) {
-            note = m[1];
-            newRecord.data = newRecord.data.substr(0, newRecord.data.length - m[0].length);
-        }
-        if (newRecord.data.length > allowedLength) {
-            const re = new RegExp(`.{0,${allowedLength - 1}}\\S`, 'g');
-            const parts = newRecord.data.match(re);
-            newRecord.data = parts.shift();
-            for (const part of parts) {
-                newRecord.tree.push({tag: 'CONC', data: part});
-            }
-        }
-        if (note) {
-            newRecord.tree.push({tag: 'NOTE', data: note});
-        }
-        newRecord.tree = fixData(newRecord.tree);
-        newData.push(newRecord);
-    }
-    return newData;
+    printGedcom(gedcomWriter.getTrailer());
 }
