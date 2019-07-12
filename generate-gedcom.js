@@ -108,19 +108,20 @@ function printPersonRecord(properties) {
     const data = {tree: []};
     const parents = [];
     const sources = properties['SOURCES'];
+    const personId = properties['ID'];
     if (properties['TOMBSTONE'] && !properties['BURIED']) {
         properties['BURIED'] = '';
     }
-    let personId;
     for (const [key, value] of Object.entries(properties)) {
         switch (key) {
             case 'FULL NAME': {
-                const {name, id} = parseName(value);
-                data.pointer = personPointer(id);
+                const {name} = parseName(value);
+                data.pointer = personPointer(personId);
                 data.tag = 'INDI';
-                data.tree.push({tag: 'NAME', data: name});
-                data.tree.push(...sourceStore.getCitations(sources['Name']));
-                personId = id;
+                data.tree.push(
+                    {tag: 'NAME', data: name},
+                    ...sourceStore.getCitations(sources['Name']),
+                );
                 break;
             }
             case 'SEX':
@@ -170,10 +171,11 @@ function printPersonRecord(properties) {
                 }
                 break;
             }
+            case 'CHILDREN':
+            case 'FULL SIBL\'G':
+            case 'ID':
             case 'SOURCES':
             case 'TOMBSTONE':
-            case 'FULL SIBL\'G':
-            case 'CHILDREN':
                 // skip
                 break;
             default:
