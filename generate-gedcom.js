@@ -14,20 +14,22 @@ main().catch(log.error);
 async function main() {
     printHeader();
     const familyData = await getFamilyData();
-    // Sex is missing from the person pages, so we have to get it from family
-    const sexById = await getSexById(familyData);
-    await printPersonRecords(sexById);
+    await printPersonRecords(familyData);
     await printFamilyRecords(familyData);
     await printSourceRecords();
     printTrailer();
 }
 
-async function printPersonRecords(sexById) {
+async function printPersonRecords(familyData) {
+    // Sex is missing from the person pages, so we have to get it from family
+    const sexById = await getSexById(familyData);
     let count = 0;
     await eachLine(inFile, {separator: '\f', buffer: 4096}, function (page, last) {
         const parser = new PersonParser(page);
         const properties = parser.getProperties();
         const personId = parser.getPersonId();
+        const childFamilyId = parser.getChildFamilyId();
+        properties['UNCERTAIN PARENTS'] = childFamilyId && familyData[childFamilyId]['CHILDREN'][personId].uncertain;
         if (sexById[personId]) {
             properties['SEX'] = sexById[personId];
         }
@@ -63,6 +65,7 @@ function getTag(key) {
         'ID': '',
         'SOURCES': '',
         'TOMBSTONE': '',
+        'UNCERTAIN PARENTS': '',
     }[key];
 }
 
@@ -162,10 +165,15 @@ function printPersonRecord(properties) {
                 }
         }
     }
+    let uncertain = properties['UNCERTAIN PARENTS'];
     for (const set of parentSets) {
         const pointer = makeFamilyPointer(set.parents);
         if (pointer) {
             const tree = [];
+            if (uncertain) {
+                tree.push({tag: 'STAT', data: 'challenged'});
+                uncertain = false; // it applies only to the primary parents
+            }
             let note = set.note || '';
             const m = note.match(/(adopted|foster)/i);
             if (m) {
@@ -287,7 +295,11 @@ async function getFamilyData() {
 function getSexById(familyData) {
     const sexById = {};
     for (const family of Object.values(familyData)) {
-        Object.assign(sexById, family['CHILDREN']);
+        for (const [childId, child] of Object.entries(family['CHILDREN'])) {
+            if (child.sex) {
+                sexById[childId] = child.sex;
+            }
+        }
         if (family['HUSBAND']) {
             sexById[family['HUSBAND']] = 'M';
         }
