@@ -231,7 +231,12 @@ function getSexById(familyData) {
     const sexById = {};
     for (const family of Object.values(familyData)) {
         Object.assign(sexById, family['CHILDREN']);
-
+        if (family['HUSBAND']) {
+            sexById[family['HUSBAND']] = 'M';
+        }
+        if (family['WIFE']) {
+            sexById[family['WIFE']] = 'F';
+        }
     }
     return sexById;
 }
