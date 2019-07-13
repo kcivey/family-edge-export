@@ -9,7 +9,7 @@ const sourceStore = require('./lib/source-store');
 const log = require('./lib/logger');
 const inFile = __dirname + '/person.doc';
 
-main().catch(err => log.error(err));
+main().catch(log.error);
 
 async function main() {
     printHeader();
@@ -184,27 +184,12 @@ function printGedcom(text) {
     return process.stdout.write(text);
 }
 
-function parseDatePlace(s) {
-    const m = s.replace(/\s+/g, ' ')
-        .match(/^(?:living )?(?:(?:(circa|roughly) )?((?:(?:\d\d? )?\w{3} )?\d{4}(?:\/\d\d?)?))? ?(.*?)\.?$/);
-    if (!m) {
-        throw new Error(`Unexpected date-place format "${s}"`);
-    }
-    const prefix = m[1] && (m[1] === 'roughly' ? 'EST' : 'ABT');
-    let date = gedcomWriter.normalizeDate(m[2]);
-    if (date && prefix) {
-        date = prefix + ' ' + date;
-    }
-    const place = m[3] && m[3].replace(/,? ([A-Z]{2})$/, ', $1');
-    return {date, place};
-}
-
 function getEventTree(key, value, sources) {
-    const {date, place} = parseDatePlace(value);
+    const {date, place} = value;
     const [type, placeType] = key === 'BORN' ? ['Birth', 'BPlace'] : key === 'DIED' ? ['Death', 'DPlace'] : [];
     const eventTree = [];
     if (date) {
-        eventTree.push({tag: 'DATE', data: date});
+        eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
     }
     const eventSources = sources[type] || []; // attach to whole event since DATE can't have SOUR
     if (place) {
@@ -229,7 +214,7 @@ async function getFamilyData() {
         const properties = parser.getProperties();
         const familyId = parser.getFamilyId();
         if (familyData[familyId]) {
-            // This is a second (or later) page. Combine the children with earlier ones
+            // This is a second (or later) page, combine the children with earlier ones
             Object.assign(familyData[familyId]['CHILDREN'], properties['CHILDREN']);
         }
         else {
@@ -261,6 +246,19 @@ function printFamilyRecords(familyData) {
                 const data = makePersonPointer(id);
                 tree.push({tag, data});
             }
+        }
+        for (const event of properties['MARR']) {
+            const {type, date, place} = event;
+            const tag = {Married: 'MARR', Divorced: 'DIV'}[type];
+            const eventTree = [];
+            if (date) {
+                eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
+            }
+            if (place) {
+                eventTree.push({tag: 'PLAC', data: place});
+            }
+            // Family Edge has no sources for marriages
+            tree.push({tag, tree: eventTree});
         }
         for (const childId of Object.keys(properties['CHILDREN'])) {
             tree.push({
