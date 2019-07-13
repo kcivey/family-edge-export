@@ -68,7 +68,7 @@ function getTag(key) {
 
 function printPersonRecord(properties) {
     const data = {tree: []};
-    const parents = [];
+    const parentSets = [{parents: []}];
     const sources = properties['SOURCES'];
     const personId = properties['ID'];
     if (properties['TOMBSTONE'] && !properties['BURIED']) {
@@ -117,8 +117,6 @@ function printPersonRecord(properties) {
                 break;
             }
             case 'OCCUPATION':
-                data.tree.push({tag, data: value});
-                break;
             case 'NOTE':
             case 'HISTORY NOTES':
                 if (value) {
@@ -127,9 +125,27 @@ function printPersonRecord(properties) {
                 break;
             case 'FATHER':
             case 'MOTHER': {
-                const {id} = parseName(value);
+                const id = PersonParser.extractId(value);
                 if (id) {
-                    parents.push(id);
+                    parentSets[0].parents.push(id);
+                }
+                break;
+            }
+            case 'PARENTS': {
+                for (let text of value) {
+                    const m = text.match(/^(.+) \[NOTE: (.+)]$/);
+                    let note = '';
+                    if (m) {
+                        note = m[2];
+                        text = m[1];
+                    }
+                    const parents = PersonParser.extractIds(text);
+                    if (parents.length) {
+                        parentSets.push({parents, note});
+                    }
+                    else {
+                        throw new Error(`Unexpected text in PARENTS for ${personId}: "${text}"`);
+                    }
                 }
                 break;
             }
@@ -146,8 +162,23 @@ function printPersonRecord(properties) {
                 }
         }
     }
-    if (parents.length) {
-        data.tree.push({tag: 'FAMC', data: makeFamilyPointer(parents)});
+    for (const set of parentSets) {
+        const pointer = makeFamilyPointer(set.parents);
+        if (pointer) {
+            const tree = [];
+            let note = set.note || '';
+            const m = note.match(/(adopted|foster)/i);
+            if (m) {
+                tree.push({tag: 'PEDI', data: m[1].toLowerCase()});
+                if (note === m[1]) {
+                    note = ''; // no need for note of it just says "Adopted"
+                }
+            }
+            if (note) {
+                tree.push({tag: 'NOTE', data: set.note});
+            }
+            data.tree.push({tag: 'FAMC', data: pointer, tree});
+        }
     }
     data.tree.push(...getCitationsForRecord(sources));
     printGedcom(data);
