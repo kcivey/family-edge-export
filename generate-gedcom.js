@@ -159,7 +159,7 @@ function parseName(s) {
     let [, name, suffix, id] = m;
     name = name.replace(/\b[A-Z'-]{2,}(?:\b \b[A-Z'-]{2,})*$|\?{3}$/,
         surname => '/' + titleCase(surname) + '/');
-    name = name.replace(/ \/\/{3}\/$/, '') // missing last names
+    name = name.replace(/ \/\?{3}\/$/, '') // missing last names
         .replace(/^\?{3} /, ''); // missing first names
     if (suffix) {
         name += ' ' + suffix;
