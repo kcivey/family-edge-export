@@ -251,16 +251,21 @@ function printGedcom(text) {
 
 function getEventTree(tag, value, sources = {}) {
     const {date, place} = value;
-    const [type, placeType] = tag === 'BIRT' ? ['Birth', 'BPlace'] : tag === 'DEAT' ? ['Death', 'DPlace'] : [];
     const eventTree = [];
     if (date) {
         eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
     }
-    const eventSources = sources[type] || []; // attach to whole event since DATE can't have SOUR
     if (place) {
-        const placeSources = (sources[placeType] || [])
-            .filter(source => !eventSources.includes(source)); // exclude any already on higher level
-        eventTree.push({tag: 'PLAC', data: place, tree: sourceStore.getCitations(placeSources)});
+        eventTree.push({tag: 'PLAC', data: place});
+    }
+    const sourceTypes = tag === 'BIRT' ? ['Birth', 'BPlace'] : tag === 'DEAT' ? ['Death', 'DPlace'] : [];
+    const eventSources = [];
+    for (const type of sourceTypes) {
+        for (const source of sources[type] || []) {
+            if (!eventSources.includes(source)) {
+                eventSources.push(source);
+            }
+        }
     }
     eventTree.push(...sourceStore.getCitations(eventSources));
     return eventTree;
