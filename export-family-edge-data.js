@@ -36,6 +36,7 @@ async function main() {
 }
 
 async function generateFile(type, familyIds) {
+    const startTime = Date.now();
     await checkOutFile();
     const {pid, exitPromise} = await startDosBox();
     sendKeys.setWindowByPid(pid);
@@ -44,7 +45,13 @@ async function generateFile(type, familyIds) {
     sendKeys.send('qqqn'); // quit Family Edge
     await pause(500)();
     await exitPromise;
-    return await finish(type, type === 'person' ? undefined : familyIds.length);
+    familyIds = await finish(type, type === 'person' ? undefined : familyIds.length);
+    log.info(`Done in ${elapsedTime()}`);
+    return familyIds;
+
+    function elapsedTime() {
+        return Math.round((Date.now() - startTime) / 1000) + ' sec';
+    }
 }
 
 async function checkOutFile() {
