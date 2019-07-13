@@ -42,6 +42,30 @@ function printHeader() {
     printGedcom(gedcomWriter.getHeader({id: 'KCIVEY', name: 'Keith Calvert Ivey'}));
 }
 
+function getTag(key) {
+    // Space means OK to skip (sometimes handled elsewhere)
+    return {
+        'BORN': 'BIRT',
+        'BURIED': 'BURI',
+        'CHRISTENED': 'CHR',
+        'DIED': 'DEAT',
+        'FULL NAME': 'NAME',
+        'HISTORY NOTES': 'NOTE',
+        'LOCATION': 'RESI',
+        'NOTE': 'NOTE',
+        'OCCUPATION': 'OCCU',
+        'SEX': 'SEX',
+        'SPOUSES': 'FAMS',
+        'WILL': 'WILL',
+        'WILL/ESTATE': 'PROB',
+        'CHILDREN': '',
+        'FULL SIBL\'G': '',
+        'ID': '',
+        'SOURCES': '',
+        'TOMBSTONE': '',
+    }[key];
+}
+
 function printPersonRecord(properties) {
     const data = {tree: []};
     const parents = [];
@@ -51,47 +75,54 @@ function printPersonRecord(properties) {
         properties['BURIED'] = '';
     }
     for (const [key, value] of Object.entries(properties)) {
+        const tag = getTag(key);
         switch (key) {
             case 'FULL NAME': {
                 const {name} = parseName(value);
                 data.pointer = makePersonPointer(personId);
                 data.tag = 'INDI';
                 data.tree.push(
-                    {tag: 'NAME', data: name},
+                    {tag, data: name},
                     ...sourceStore.getCitations(sources['Name']),
                 );
                 break;
             }
             case 'SEX':
                 // Insert as second, after name
-                data.tree.splice(1, 0, {tag: 'SEX', data: value});
+                data.tree.splice(1, 0, {tag, data: value});
                 break;
             case 'BORN':
             case 'DIED':
             case 'BURIED':
             case 'LOCATION':
-            case 'CHRISTENED': {
-                const eventTree = getEventTree(key, value, sources);
+            case 'CHRISTENED':
+            case 'WILL':
+            case 'WILL/ESTATE': {
+                const eventTree = getEventTree(tag, value, sources);
                 if (key === 'BURIED' && properties['TOMBSTONE']) {
                     eventTree.push({tag: 'NOTE', data: 'Gravestone: ' + properties['TOMBSTONE'].replace(/;?\.?$/, '')});
                 }
-                const tag = {
-                    BORN: 'BIRT',
-                    DIED: 'DEAT',
-                    BURIED: 'BURI',
-                    LOCATION: 'RESI',
-                    CHRISTENED: 'CHR',
-                }[key];
                 data.tree.push({tag, tree: eventTree});
+                const {date2, place} = {value};
+                if (date2) {
+                    if (key === 'WILL') {
+                        const tag = 'PROB';
+                        const tree = getEventTree(tag, {date: date2, place});
+                        data.tree.push({tag, tree});
+                    }
+                    else {
+                        throw new Error(`Unexpected second date in ${key} for person ${personId}`);
+                    }
+                }
                 break;
             }
             case 'OCCUPATION':
-                data.tree.push({tag: 'OCCU', data: value});
+                data.tree.push({tag, data: value});
                 break;
             case 'NOTE':
             case 'HISTORY NOTES':
                 if (value) {
-                    data.tree.push({tag: 'NOTE', data: value});
+                    data.tree.push({tag, data: value});
                 }
                 break;
             case 'FATHER':
@@ -105,19 +136,14 @@ function printPersonRecord(properties) {
             case 'SPOUSES': {
                 const spouseIds = PersonParser.extractIds(value);
                 for (const spouseId of spouseIds) {
-                    data.tree.push({tag: 'FAMS', data: makeFamilyPointer([personId, spouseId])});
+                    data.tree.push({tag, data: makeFamilyPointer([personId, spouseId])});
                 }
                 break;
             }
-            case 'CHILDREN':
-            case 'FULL SIBL\'G':
-            case 'ID':
-            case 'SOURCES':
-            case 'TOMBSTONE':
-                // skip
-                break;
             default:
-                log.warn(`Skipping ${key}`);
+                if (tag !== '') { // OK to skip
+                    log.warn(`Skipping ${key}`);
+                }
         }
     }
     if (parents.length) {
@@ -184,9 +210,9 @@ function printGedcom(text) {
     return process.stdout.write(text);
 }
 
-function getEventTree(key, value, sources) {
+function getEventTree(tag, value, sources = {}) {
     const {date, place} = value;
-    const [type, placeType] = key === 'BORN' ? ['Birth', 'BPlace'] : key === 'DIED' ? ['Death', 'DPlace'] : [];
+    const [type, placeType] = tag === 'BIRT' ? ['Birth', 'BPlace'] : tag === 'DEAT' ? ['Death', 'DPlace'] : [];
     const eventTree = [];
     if (date) {
         eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
@@ -255,14 +281,8 @@ function printFamilyRecords(familyData) {
         for (const event of properties['MARR']) {
             const {type, date, place} = event;
             const tag = {Married: 'MARR', Divorced: 'DIV'}[type];
-            const eventTree = [];
-            if (date) {
-                eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
-            }
-            if (place) {
-                eventTree.push({tag: 'PLAC', data: place});
-            }
             // Family Edge has no sources for marriages
+            const eventTree = getEventTree(tag, {date, place});
             tree.push({tag, tree: eventTree});
         }
         for (const childId of Object.keys(properties['CHILDREN'])) {
