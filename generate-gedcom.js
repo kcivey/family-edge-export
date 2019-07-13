@@ -84,10 +84,11 @@ function printPersonRecord(properties) {
                 const {name} = parseName(value);
                 data.pointer = makePersonPointer(personId);
                 data.tag = 'INDI';
-                data.tree.push(
-                    {tag, data: name},
-                    ...sourceStore.getCitations(sources['Name']),
-                );
+                data.tree.push({
+                    tag,
+                    data: name,
+                    tree: sourceStore.getCitations(sources['Name']),
+                });
                 break;
             }
             case 'SEX':
