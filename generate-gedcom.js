@@ -270,7 +270,7 @@ function getEventTree(tag, value, sources = {}) {
         eventTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
     }
     if (place) {
-        eventTree.push({tag: 'PLAC', data: place});
+        eventTree.push({tag: 'PLAC', data: gedcomWriter.normalizePlace(place)});
     }
     const sourceTypes = tag === 'BIRT' ? ['Birth', 'BPlace'] : tag === 'DEAT' ? ['Death', 'DPlace'] : [];
     const eventSources = [];
