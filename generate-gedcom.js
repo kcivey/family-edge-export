@@ -179,13 +179,19 @@ function printPersonRecord(properties) {
                 }
         }
     }
-    let uncertain = properties['UNCERTAIN PARENTS'];
+    data.tree.push(...getChildFamilyTree(parentSets, properties['UNCERTAIN PARENTS']));
+    data.tree.push(...getCitationsForRecord(sources));
+    printGedcom(data);
+}
+
+function getChildFamilyTree(parentSets, uncertain) {
+    const tree = [];
     for (const set of parentSets) {
         const pointer = makeFamilyPointer(set.parents);
         if (pointer) {
-            const tree = [];
+            const subtree = [];
             if (uncertain) {
-                tree.push({tag: 'STAT', data: 'challenged'});
+                subtree.push({tag: 'STAT', data: 'challenged'});
                 uncertain = false; // it applies only to the primary parents
             }
             let note = set.note || '';
@@ -193,7 +199,7 @@ function printPersonRecord(properties) {
             if (m) {
                 const parentType = m[1].toLowerCase();
                 const rest = m[2];
-                tree.push({tag: 'PEDI', data: parentType});
+                subtree.push({tag: 'PEDI', data: parentType});
                 if (note.toLowerCase() === parentType) {
                     note = ''; // no need for note if it just says "Adopted"
                 }
@@ -209,17 +215,16 @@ function printPersonRecord(properties) {
                     if (note) {
                         adoptedTree.push({tag: 'NOTE', data: note});
                     }
-                    data.tree.push({tag: 'ADOP', tree: adoptedTree});
+                    tree.push({tag: 'ADOP', tree: adoptedTree});
                 }
             }
             if (note) {
-                tree.push({tag: 'NOTE', data: set.note});
+                subtree.push({tag: 'NOTE', data: set.note});
             }
-            data.tree.push({tag: 'FAMC', data: pointer, tree});
+            tree.push({tag: 'FAMC', data: pointer, tree: subtree});
         }
     }
-    data.tree.push(...getCitationsForRecord(sources));
-    printGedcom(data);
+    return tree;
 }
 
 function getCitationsForRecord(sources) {
