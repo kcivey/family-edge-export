@@ -189,11 +189,27 @@ function printPersonRecord(properties) {
                 uncertain = false; // it applies only to the primary parents
             }
             let note = set.note || '';
-            const m = note.match(/(adopted|foster)/i);
+            const m = note.match(/(adopted|foster)(.*)/i);
             if (m) {
-                tree.push({tag: 'PEDI', data: m[1].toLowerCase()});
-                if (note === m[1]) {
-                    note = ''; // no need for note of it just says "Adopted"
+                const parentType = m[1].toLowerCase();
+                const rest = m[2];
+                tree.push({tag: 'PEDI', data: parentType});
+                if (note.toLowerCase() === parentType) {
+                    note = ''; // no need for note if it just says "Adopted"
+                }
+                if (parentType === 'adopted') {
+                    const adoptedTree = [{tag: 'FAMC', data: pointer}];
+                    const {date, extra} = PersonParser.extractDate(rest);
+                    if (date) {
+                        adoptedTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
+                        if (note.length < 11 + date.length) { // just says "Adopted" and date
+                            note = '';
+                        }
+                    }
+                    if (note) {
+                        adoptedTree.push({tag: 'NOTE', data: note});
+                    }
+                    data.tree.push({tag: 'ADOP', tree: adoptedTree});
                 }
             }
             if (note) {
