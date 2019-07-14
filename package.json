@@ -1,6 +1,6 @@
 {
   "name": "family-edge-export",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Automating export of data from ancient Family Edge genealogy software",
   "main": "index.js",
   "scripts": {
