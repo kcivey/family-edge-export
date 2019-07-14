@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 
 const util = require('util');
+const argv = require('yargs')
+    .options({
+        ancestry: {
+            type: 'ancestry',
+            describe: 'write nonstandard GEDCOM format for Ancestry.com',
+        },
+    })
+    .strict(true)
+    .argv;
 const eachLine = util.promisify(require('line-reader').eachLine);
 const {PersonParser, FamilyParser} = require('./lib/parser');
 const gedcomWriter = require('./lib/gedcom-writer');
@@ -8,6 +17,10 @@ const {makeFamilyPointer, makePersonPointer} = gedcomWriter;
 const sourceStore = require('./lib/source-store');
 const log = require('./lib/logger');
 const inFile = __dirname + '/person.doc';
+
+if (argv.ancestry) {
+    gedcomWriter.setAncestryFormat(true);
+}
 
 main().catch(log.error);
 
