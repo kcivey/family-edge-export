@@ -5,3 +5,4 @@ node_modules
 *.ged
 *.doc
 *.old
+/lib/submitter.yaml

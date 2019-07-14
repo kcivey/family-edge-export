@@ -1,0 +1,9 @@
+id : EXAMPLE
+name: Pat Sample
+address: |-
+  1234 Somewhere Avenue
+  Washington, DC 20008
+phone: 202-555-1234
+email: pats@example.com
+fax: 202-555-5678
+web: https://example.com
