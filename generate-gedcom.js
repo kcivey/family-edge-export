@@ -199,10 +199,10 @@ function printPersonRecord(properties) {
                 }
                 if (parentType === 'adopted') {
                     const adoptedTree = [{tag: 'FAMC', data: pointer}];
-                    const {date, extra} = PersonParser.extractDate(rest);
+                    const {date} = PersonParser.extractDate(rest);
                     if (date) {
                         adoptedTree.push({tag: 'DATE', data: gedcomWriter.normalizeDate(date)});
-                        if (note.length < 11 + date.length) { // just says "Adopted" and date
+                        if (note.length <= 11 + date.length) { // just says "Adopted" and date
                             note = '';
                         }
                     }
