@@ -1,6 +1,6 @@
-# family-edge-export
+# Family Edge Export
 
-*Export data from ancient Family Edge Plus genealogy software in GEDCOM format*
+*Export data from ancient Family Edge Plus genealogy software and convert to GEDCOM format*
 
 ## Description
 
@@ -9,9 +9,11 @@
 :notes:
 there was an MS-DOS genealogy program called Family Edge Plus. I entered more than 3,000
 relatives (or possible relatives) into it (version 2.5b), and now years later I want to
-get the data out.
+get the data out, so I wrote these programs to export the data and convert it to GEDCOM
+that can be imported elsewhere.
 It's unlikely that anyone else out there is having this problem and is reading this, but
-just in case I'm putting this out there.
+just in case I'm writing up these instructions (and maybe they'll be useful for my future
+self).
 
 These programs are written for Linux, but it might not be hard to adapt them for
 OS X (using equivalents of `dosbox` and `xdotool`). Windows would be harder.
@@ -80,6 +82,11 @@ If there's already an output file in the `F-EDGE/DATA` directory, the export pro
 exit with an error message, to make sure you don't overwrite something you might want.
 You can delete the file manually, or run the export with the `--delete` option.
 
+If you do other things on the computer while the export is running, it can get confused
+about what window it's sending keypresses to and skip exporting some records. That may
+be a bug in `xdotool`. It's best to just leave the `dosbox` window active and let the
+export run to completion without doing anything else. It should take only a few minutes.
+
 The export will print the individual sheets and family group sheets to the files
 `person.doc` and `family.doc`, respectively. To generate the GEDCOM from this data, run
 
@@ -91,3 +98,6 @@ Ancestry.com uses a somewhat nonstandard GEDCOM format. If you're planning to up
 your GEDCOM to that site, there's an option to use a format it likes better:
 
     ./generate-gedcom.js --ancestry > my-family.ged
+
+If you're actually reading this and wanting to do the conversion, I might be able to
+help if you contact me.
