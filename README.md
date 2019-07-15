@@ -23,7 +23,7 @@ OS X (using equivalents of `dosbox` and `xdotool`). Windows would be harder.
 
 If you have `git` installed, you can check out the files with
 
-    git https://github.com/kcivey/family-edge-export.git
+    git clone https://github.com/kcivey/family-edge-export.git
 
 Otherwise you can download and uncompress the
 [zip file](https://github.com/kcivey/family-edge-export/archive/master.zip).
