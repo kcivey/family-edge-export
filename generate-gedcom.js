@@ -258,7 +258,7 @@ function parseName(s) {
     }
     let [, name, suffix, id] = m;
     name = name.replace(/\b[A-Z'-]{2,}(?:\b \b[A-Z'-]{2,})*$|\?{3}$/,
-        surname => '/' + titleCase(surname) + '/');
+        surname => '/' + gedcomWriter.titleCase(surname) + '/');
     name = name.replace(/ \/\?{3}\/$/, '') // missing last names
         .replace(/^\?{3} /, ''); // missing first names
     if (suffix) {
@@ -266,15 +266,6 @@ function parseName(s) {
     }
     id = +id;
     return {name, id};
-}
-
-function titleCase(s) {
-    return s.replace(/[^\W_]+/g, initialCap)
-        .replace(/^(Mc)(\w+)/, (m, m1, m2) => m1 + initialCap(m2));
-}
-
-function initialCap(s) {
-    return s.substr(0, 1).toUpperCase() + s.substr(1).toLowerCase();
 }
 
 function printGedcom(text) {

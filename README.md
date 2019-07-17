@@ -101,3 +101,8 @@ your GEDCOM to that site, there's an option to use a format it likes better:
 
 If you're actually reading this and wanting to do the conversion, I might be able to
 help if you contact me.
+
+--
+Keith C. Ivey <keith@iveys.org>
+Washington, DC
+15 July 2019
