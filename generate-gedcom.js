@@ -76,6 +76,7 @@ function getTag(key) {
         'CHILDREN': '',
         'FULL SIBL\'G': '',
         'ID': '',
+        'NICKNAME': '',
         'SOURCES': '',
         'TOMBSTONE': '',
         'UNCERTAIN PARENTS': '',
@@ -87,14 +88,14 @@ function printPersonRecord(properties) {
     const parentSets = [{parents: []}];
     const sources = properties['SOURCES'];
     const personId = properties['ID'];
-    if (properties['TOMBSTONE'] && !properties['BURIED']) {
-        properties['BURIED'] = '';
-    }
     for (const [key, value] of Object.entries(properties)) {
         const tag = getTag(key);
         switch (key) {
             case 'FULL NAME': {
-                const {name} = parseName(value);
+                let {name} = parseName(value);
+                if (properties['NICKNAME']) {
+                    name = name.replace('/', '"' + properties['NICKNAME'] + '" /');
+                }
                 data.pointer = makePersonPointer(personId);
                 data.tag = 'INDI';
                 data.tree.push({
