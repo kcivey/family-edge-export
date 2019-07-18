@@ -26,6 +26,6 @@
     "line-reader": "^0.4.0",
     "moment": "^2.24.0",
     "number-list": "^0.2.2",
-    "yargs": "^13.2.4"
+    "yargs": "^13.3.0"
   }
 }
