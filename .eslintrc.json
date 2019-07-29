@@ -1,13 +1,11 @@
 {
     "env": {
         "browser": true,
-        "commonjs": true,
-        "es6": true
+        "es6": true,
+        "node": true
     },
     "extends": "google",
     "globals": {
-        "process": "readonly",
-        "__dirname": "readonly"
     },
     "parserOptions": {
         "ecmaVersion": 2018
@@ -41,6 +39,7 @@
         "max-len": ["error", {"code":  120}],
         "no-undef": "error",
         "eqeqeq": ["error", "smart"],
+        "space-infix-ops": "error",
         "prefer-rest-params": "off"
     }
 }
